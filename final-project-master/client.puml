@@ -1,0 +1,17 @@
+@startuml
+
+actor Client
+participant "Hotel Service" as Hotel
+participant "Booking Service" as Booking
+
+alt Получение списка отелей
+Client -> Hotel: Запрос отелей
+Hotel --> Client: Список отелей
+end
+
+alt Получение списка бронирований
+Client -> Booking: Запрос списка бронирований
+Booking --> Client: Список бронирований
+end
+
+@enduml

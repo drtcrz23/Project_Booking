@@ -1,0 +1,37 @@
+@startuml
+
+actor Hotelier
+actor Client
+participant "Hotel Service" as Hotel
+participant "Booking Service" as Booking
+participant "Payment System" as Payment
+participant "Notification Service" as Notify
+participant "Delivery Service" as Delivery
+
+Client -> Hotel: Получение списка отелей
+Hotel --> Client: Список отелей
+
+Client --> Client: Выбор отеля
+Client -> Booking: Бронирование конкретного отеля
+
+Booking -> Hotel: Получение стоимости
+Hotel --> Booking: Стоимость за ночь
+Booking --> Booking: Подсчет финальной стоимости
+opt Оплата бронирования
+Booking -> Payment: Запрос оплаты
+Client -> Payment: Оплата (ввод реквизитов)
+Payment --> Booking: Оплата прошла успешно
+end
+
+Booking --> Booking: Бронирование
+
+Booking -> Notify: [Kafka] Оповещение об успешном бронировании
+Booking --> Client: Бронирование успешно завершено
+
+opt Асинхронная отправка уведомлений
+Notify -> Delivery: Отправить уведомление по почте
+Delivery --> Client: Уведомление клиента по почте об успешном бронировании
+Delivery --> Hotelier: Уведомление владельца отеля по почте об успешном бронировании
+end
+
+@enduml

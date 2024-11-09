@@ -1,0 +1,24 @@
+@startuml
+
+actor Hotelier
+participant "Hotel Service" as Hotel
+participant "Booking Service" as Booking
+
+alt Добавление отеля
+Hotelier -> Hotel: Отправка данных об отеле
+Hotel --> Hotel: Добавление в БД
+Hotel --> Hotelier: Успешный ответ
+end
+
+alt Редактирование отеля
+Hotelier -> Hotel: Обновленные данные об отеле
+Hotel --> Hotel: Обновление данных в БД
+Hotel --> Hotelier: Обновленная информация
+end
+
+alt Получение списка бронирований в отелях
+Hotelier -> Booking: Запрос бронирований в его отелях
+Booking --> Hotelier: Получение списка бронирований
+end
+
+@enduml
