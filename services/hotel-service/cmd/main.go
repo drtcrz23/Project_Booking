@@ -54,6 +54,8 @@ func main() {
 			handler.AddHotel(w, r)
 		case "PATCH":
 			handler.SetHotel(w, r)
+		case "GET":
+			handler.GetHotelsByHotelier(w, r)
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
