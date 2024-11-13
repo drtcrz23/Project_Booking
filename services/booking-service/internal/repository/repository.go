@@ -3,6 +3,7 @@ package repository
 import (
 	"BookingService/internal/model"
 	"database/sql"
+	"fmt"
 )
 
 func CreateDBConnection(dbName string) (*sql.DB, error) {
@@ -35,10 +36,36 @@ func AddBooking(booking model.Booking, db *sql.DB) error {
 						VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		booking.HotelId, booking.UserId,
 		booking.StartDate, booking.EndDate,
-		booking.Price, // нужно прайс нормально подгружать в handlers по grpc
+		booking.Price,
 		booking.Status, booking.PaymentStatus)
 	if err != nil {
-		return err
+		return fmt.Errorf("ошибка добавления бронирования: %w", err)
 	}
 	return err
+}
+
+func DeleteBooking(bookingID int, db *sql.DB) error {
+	_, err := db.Exec(`DELETE FROM booking WHERE id = ?`, bookingID)
+	if err != nil {
+		return fmt.Errorf("ошибка удаления бронирования: %w", err)
+	}
+	return nil
+}
+
+func UpdateBooking(booking model.Booking, db *sql.DB) error {
+	_, err := db.Exec(`
+		UPDATE booking
+		SET hotel_id = ?, user_id = ?, start_date = ?, end_date = ?, price = ?, status = ?, payment_status = ?
+		WHERE id = ?
+	`,
+		booking.HotelId, booking.UserId,
+		booking.StartDate, booking.EndDate,
+		booking.Price,
+		booking.Status, booking.PaymentStatus,
+		booking.ID,
+	)
+	if err != nil {
+		return fmt.Errorf("ошибка обновления бронирования: %w", err)
+	}
+	return nil
 }
