@@ -44,15 +44,15 @@ func AddBooking(booking model.Booking, db *sql.DB) error {
 	return err
 }
 
-func DeleteBooking(bookingID int, db *sql.DB) error {
-	_, err := db.Exec(`DELETE FROM booking WHERE id = ?`, bookingID)
+func DeleteBooking(booking model.DeleteBooking, db *sql.DB) error {
+	_, err := db.Exec(`DELETE FROM booking WHERE id = ?`, booking.ID)
 	if err != nil {
 		return fmt.Errorf("ошибка удаления бронирования: %w", err)
 	}
 	return nil
 }
 
-func UpdateBooking(booking model.Booking, db *sql.DB) error {
+func UpdateBooking(booking model.UpdateBooking, db *sql.DB) error {
 	_, err := db.Exec(`
 		UPDATE booking
 		SET hotel_id = ?, user_id = ?, start_date = ?, end_date = ?, price = ?, status = ?, payment_status = ?
