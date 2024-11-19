@@ -27,7 +27,8 @@ func (handler *Handler) AddBooking(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error", http.StatusBadRequest)
 		return
 	}
-
+	// TODO
+	// Буду добавлять метод получения отеля по grpc, он будет юзаться еще и в update
 	var booking model.Booking
 	err = json.Unmarshal(body, &booking)
 	if err != nil {
