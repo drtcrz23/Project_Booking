@@ -5,8 +5,11 @@ import (
 	"HotelService/internal/repository"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
 )
 
 type Handler struct {
@@ -92,4 +95,34 @@ func (h *Handler) GetAllHotels(w http.ResponseWriter, r *http.Request) ([]model.
 	}
 
 	return hotels, nil
+}
+
+func (h *Handler) GetHotelById(w http.ResponseWriter, r *http.Request) {
+	idStr := r.URL.Query().Get("id")
+	if idStr == "" {
+		http.Error(w, "Missing 'id' parameter", http.StatusBadRequest)
+		return
+	}
+
+	// Преобразуем ID в число
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid 'id' parameter", http.StatusBadRequest)
+		return
+	}
+
+	hotel, err := repository.GetHotelById(id, h.DB)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			http.Error(w, fmt.Sprintf("Hotel with ID %d not found", id), http.StatusNotFound)
+		} else {
+			http.Error(w, "Failed to retrieve hotel", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(hotel); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
 }

@@ -36,6 +36,12 @@ func (handler *Handler) AddBooking(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//hotel, err := handler.getHotelByGRPC(booking.HotelId)
+	//if err != nil {
+	//	http.Error(w, fmt.Sprintf("Failed to retrieve hotel: %v", err), http.StatusInternalServerError)
+	//	return
+	//}
+
 	err = repository.AddBooking(booking, handler.DB)
 	if err != nil {
 		http.Error(w, "Ошибка при добавление бронирования", http.StatusBadRequest)
