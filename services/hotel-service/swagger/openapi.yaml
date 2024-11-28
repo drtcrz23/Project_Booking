@@ -1,0 +1,228 @@
+openapi: 3.0.0
+info:
+  title: Hotel Service API
+  description: API for managing hotels
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+paths:
+  /hotels:
+    get:
+      summary: Get all hotels
+      operationId: getAllHotels
+      responses:
+        '200':
+          description: List of all hotels
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      description: Hotel ID
+                      example: 1
+                    name:
+                      type: string
+                      description: Name of the hotel
+                      example: Grand Hotel
+                    location:
+                      type: string
+                      description: Location of the hotel
+                      example: "New York"
+                    stars:
+                      type: integer
+                      description: Star rating of the hotel
+                      example: 5
+  /hotel/{id}:
+    get:
+      summary: Get hotel by ID
+      operationId: getHotelById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the hotel to retrieve
+      responses:
+        '200':
+          description: Details of the hotel
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Hotel ID
+                    example: 1
+                  name:
+                    type: string
+                    description: Name of the hotel
+                    example: Grand Hotel
+                  location:
+                    type: string
+                    description: Location of the hotel
+                    example: "New York"
+                  stars:
+                    type: integer
+                    description: Star rating of the hotel
+                    example: 5
+        '404':
+          description: Hotel not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Hotel not found"
+    delete:
+      summary: Delete hotel by ID
+      operationId: deleteHotelById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the hotel to delete
+      responses:
+        '204':
+          description: Hotel deleted successfully
+        '404':
+          description: Hotel not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Hotel not found"
+  /hotel:
+    put:
+      summary: Update a hotel
+      operationId: updateHotel
+      requestBody:
+        description: Hotel object with updated details
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: integer
+                  description: ID of the hotel
+                  example: 1
+                name:
+                  type: string
+                  description: Name of the hotel
+                  example: Grand Hotel
+                location:
+                  type: string
+                  description: Location of the hotel
+                  example: "New York"
+                stars:
+                  type: integer
+                  description: Star rating of the hotel
+                  example: 5
+      responses:
+        '200':
+          description: Hotel updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 1
+                  name:
+                    type: string
+                    example: Grand Hotel
+                  location:
+                    type: string
+                    example: "New York"
+                  stars:
+                    type: integer
+                    example: 5
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Invalid input"
+        '404':
+          description: Hotel not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Hotel not found"
+    post:
+      summary: Add a new hotel
+      operationId: addHotel
+      requestBody:
+        description: Hotel object to be added
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Name of the hotel
+                  example: Grand Hotel
+                location:
+                  type: string
+                  description: Location of the hotel
+                  example: "New York"
+                stars:
+                  type: integer
+                  description: Star rating of the hotel
+                  example: 5
+      responses:
+        '201':
+          description: Hotel created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 1
+                  name:
+                    type: string
+                    example: Grand Hotel
+                  location:
+                    type: string
+                    example: "New York"
+                  stars:
+                    type: integer
+                    example: 5
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Invalid input"
