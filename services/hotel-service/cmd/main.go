@@ -61,6 +61,21 @@ func main() {
 		}
 	})
 
+	mux.HandleFunc("/room", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "POST":
+			handler.AddRoom(w, r)
+		case "GET":
+			handler.GetRoomsByHotel(w, r)
+		case "PATCH":
+			handler.SetRoom(w, r)
+		case "DELETE":
+			handler.DeleteRoom(w, r)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
 	err_env := app.LoadEnv()
 	if err_env != nil {
 		fmt.Print(err_env)

@@ -5,6 +5,7 @@ type Hotel struct {
 	Name       string `json:"name"`
 	Price      string `json:"Price"`
 	HotelierId int    `json:"hotelier_id"`
+	Rooms      []Room `json:"rooms"` // Список комнат, которые принадлежат отелю
 }
 
 type HotelData struct {
