@@ -3,19 +3,16 @@ syntax = "proto3";
 package hotel;
 
 service HotelService {
-  rpc GetHotel (GetHotelRequest) returns (GetHotelResponse);
+  rpc GetHotelById (GetHotelRequest) returns (GetHotelResponse);
 }
 
 message GetHotelRequest {
-  int32 id = 1;
+  int32 hotel_id = 1;
 }
 
 message GetHotelResponse {
-  Hotel hotel = 1;
-}
-
-message Hotel {
   int32 id = 1;
   string name = 2;
   string price = 3;
+  int32 hotelier_id = 4;
 }
