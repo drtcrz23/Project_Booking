@@ -92,6 +92,12 @@ func (h *Handler) GetAllHotels(w http.ResponseWriter, r *http.Request) ([]model.
 		if err := rows.Scan(&hotel.ID, &hotel.Name, &hotel.Price, &hotel.HotelierId); err != nil {
 			return nil, err
 		}
+		rooms, err := repository.GetRoomByHotel(hotel.ID, h.DB)
+		if err != nil {
+			return nil, fmt.Errorf("ошибка при получении комнат для отеля с ID %d: %w", hotel.ID, err)
+		}
+
+		hotel.Rooms = rooms
 		hotels = append(hotels, hotel)
 	}
 
@@ -108,7 +114,7 @@ func (h *Handler) GetHotelsByHotelier(w http.ResponseWriter, r *http.Request) {
 	}
 	hotels, err := repository.GetHotelsByHotelier(hotelierID, h.DB)
 	if err != nil {
-		http.Error(w, "Ошибка при получении отелей", http.StatusInternalServerError)
+		http.Error(w, fmt.Errorf("Ошибка при получении отеле: %w", err).Error(), http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

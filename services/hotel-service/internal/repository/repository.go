@@ -42,6 +42,15 @@ func CreateTable(db *sql.DB) error {
 	return err
 }
 
+func InsertInTable(db *sql.DB) error {
+	_, err := db.Exec(`
+        INSERT INTO hoteliers
+		(id, name)
+		VALUES(1, 'test_name');
+    `)
+	return err
+}
+
 func AddHotel(hotelier model.Hotelier, hotel model.HotelData, db *sql.DB) error {
 	_, err := db.Exec(`INSERT INTO hotel (name, price, hotelier_id) VALUES (?, ?, ?)`, hotel.Name, hotel.Price, hotelier.HotelierId)
 	if err != nil {
@@ -119,7 +128,7 @@ func GetHotelById(id int, db *sql.DB) (*model.Hotel, error) {
 
 func GetRoomByHotel(hotelID int, db *sql.DB) ([]model.Room, error) {
 	roomQuery := `
-		SELECT id, hotel_id, room_number, type, price, status
+		SELECT id, hotel_id, room_number, type_room, price, status
 		FROM rooms
 		WHERE hotel_id = ?
 	`
@@ -146,7 +155,7 @@ func GetRoomByHotel(hotelID int, db *sql.DB) ([]model.Room, error) {
 }
 
 func AddRoom(room model.Room, db *sql.DB) error {
-	query := `INSERT INTO rooms (hotel_id, room_number, type, price, status) VALUES (?, ?, ?, ?, ?)`
+	query := `INSERT INTO rooms (hotel_id, room_number, type_room, price, status) VALUES (?, ?, ?, ?, ?)`
 	_, err := db.Exec(query, room.HotelId, room.RoomNumber, room.Type, room.Price, room.Status)
 	if err != nil {
 		return fmt.Errorf("ошибка при добавлении комнаты: %w", err)
@@ -156,7 +165,7 @@ func AddRoom(room model.Room, db *sql.DB) error {
 
 func SetRoom(room model.Room, db *sql.DB) error {
 	query := `UPDATE rooms
-			  SET room_number = ?, type = ?, price = ?, status = ?
+			  SET room_number = ?, type_room = ?, price = ?, status = ?
 			  WHERE id = ? AND hotel_id = ?`
 	result, err := db.Exec(query, room.RoomNumber, room.Type, room.Price, room.Status, room.ID, room.HotelId)
 	if err != nil {

@@ -32,6 +32,11 @@ func main() {
 		return
 	}
 
+	if err := repository.InsertInTable(db); err != nil {
+		fmt.Println("Error creating table:", err)
+		return
+	}
+
 	handler := handlers.NewHandler(db)
 
 	mux := http.NewServeMux()
