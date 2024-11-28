@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package hotel;
+
+service HotelService {
+  rpc GetHotelById (GetHotelRequest) returns (GetHotelResponse);
+}
+
+message GetHotelRequest {
+  int32 hotel_id = 1;
+}
+
+message GetHotelResponse {
+  int32 id = 1;
+  string name = 2;
+  string price = 3;
+  int32 hotelier_id = 4;
+}
