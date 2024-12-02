@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"BookingService/internal/kafka_producer"
 	"BookingService/internal/model"
 	"BookingService/internal/repository"
 	"database/sql"
@@ -10,15 +11,16 @@ import (
 )
 
 type Handler struct {
-	DB *sql.DB
+	DB       *sql.DB
+	Producer *kafka_producer.KafkaProducer
 }
 
 type QueryStatus struct {
 	Status string `json:"status"`
 }
 
-func NewHandler(db *sql.DB) *Handler {
-	return &Handler{DB: db}
+func NewHandler(db *sql.DB, producer *kafka_producer.KafkaProducer) *Handler {
+	return &Handler{DB: db, Producer: producer}
 }
 
 func (handler *Handler) AddBooking(w http.ResponseWriter, r *http.Request) {
@@ -45,6 +47,28 @@ func (handler *Handler) AddBooking(w http.ResponseWriter, r *http.Request) {
 	err = repository.AddBooking(booking, handler.DB)
 	if err != nil {
 		http.Error(w, "Ошибка при добавление бронирования", http.StatusBadRequest)
+		return
+	}
+
+	event := map[string]interface{}{
+		"hotel_id":       booking.HotelId,
+		"user_id":        booking.UserId,
+		"start_date":     booking.StartDate,
+		"end_date":       booking.EndDate,
+		"price":          booking.Price,
+		"status":         booking.Status,
+		"payment_status": booking.PaymentStatus,
+	}
+
+	message, err := json.Marshal(event)
+	if err != nil {
+		http.Error(w, "Ошибка при подготовке события Kafka", http.StatusInternalServerError)
+		return
+	}
+
+	err = handler.Producer.Publish(r.Context(), "booking_event", message)
+	if err != nil {
+		http.Error(w, "Ошибка при отправке события в Kafka", http.StatusInternalServerError)
 		return
 	}
 

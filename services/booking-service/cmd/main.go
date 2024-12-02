@@ -3,6 +3,7 @@ package main
 import (
 	"BookingService/internal/app"
 	"BookingService/internal/handlers"
+	"BookingService/internal/kafka_producer"
 	"BookingService/internal/repository"
 	"context"
 	"errors"
@@ -29,7 +30,12 @@ func main() {
 		return
 	}
 
-	handler := handlers.NewHandler(db)
+	// Пока добавил так, дальше займусь соединением кафки с notifications
+	brokers := []string{"localhost:9092"}
+	producer := kafka_producer.NewKafkaProducer(brokers, "booking_event")
+	defer producer.Close()
+
+	handler := handlers.NewHandler(db, producer)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/booking", func(w http.ResponseWriter, r *http.Request) {

@@ -32,6 +32,7 @@ func CreateTable(db *sql.DB) error {
 }
 
 func AddBooking(booking model.Booking, db *sql.DB) error {
+
 	_, err := db.Exec(`INSERT INTO booking (hotel_id, user_id, start_date, end_date, price, status, payment_status)
 						VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		booking.HotelId, booking.UserId,
