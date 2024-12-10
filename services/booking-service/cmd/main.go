@@ -51,6 +51,9 @@ func main() {
 		}
 	})
 
+	mux.HandleFunc("/bookings", handler.GetBookings)
+	mux.HandleFunc("/bookings/user", handler.GetBookingByUser)
+
 	err_env := app.LoadEnv()
 	if err_env != nil {
 		fmt.Println(err_env)

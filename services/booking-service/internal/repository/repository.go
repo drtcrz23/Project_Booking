@@ -2,7 +2,9 @@ package repository
 
 import (
 	"BookingService/internal/model"
+	"BookingService/internal/parser_data"
 	"database/sql"
+	"errors"
 	"fmt"
 )
 
@@ -19,7 +21,8 @@ func CreateTable(db *sql.DB) error {
 	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS booking (
 			id BIGSERIAL PRIMARY KEY
-			hotel_id BIGINT REFERENCES hotel(id)
+			hotel_id BIGINT
+		    room_id BIGINT
 			user_id BIGINT /*REFERENCES users(id)*/
 			start_date TEXT NOT NULL
 			end_date TEXT NOT NULL
@@ -31,13 +34,26 @@ func CreateTable(db *sql.DB) error {
 	return err
 }
 
-func AddBooking(booking model.Booking, db *sql.DB) error {
+func AddBooking(booking model.Booking, room model.Room, db *sql.DB) error {
+	if room.Status != "available" {
+		return errors.New("room is not available")
+	}
 
-	_, err := db.Exec(`INSERT INTO booking (hotel_id, user_id, start_date, end_date, price, status, payment_status)
+	startDate := booking.StartDate
+	endDate := booking.EndDate
+
+	days, err_data := parser_data.ParseAndCalculateDays(startDate, endDate)
+	if err_data != nil {
+		return err_data
+	}
+
+	price := room.Price * days
+
+	_, err := db.Exec(`INSERT INTO booking (hotel_id, roomd_id, user_id, start_date, end_date, price, status, payment_status)
 						VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		booking.HotelId, booking.UserId,
-		booking.StartDate, booking.EndDate,
-		booking.Price,
+		booking.HotelId, booking.RoomId,
+		booking.UserId, booking.StartDate,
+		booking.EndDate, price,
 		booking.Status, booking.PaymentStatus)
 	if err != nil {
 		return fmt.Errorf("ошибка добавления бронирования: %w", err)
@@ -53,15 +69,29 @@ func DeleteBooking(booking model.DeleteBooking, db *sql.DB) error {
 	return nil
 }
 
-func UpdateBooking(booking model.UpdateBooking, db *sql.DB) error {
+func UpdateBooking(booking model.UpdateBooking, room model.Room, db *sql.DB) error {
+	if room.Status != "available" {
+		return errors.New("room is not available")
+	}
+
+	startDate := booking.StartDate
+	endDate := booking.EndDate
+
+	days, err_data := parser_data.ParseAndCalculateDays(startDate, endDate)
+	if err_data != nil {
+		return err_data
+	}
+
+	price := room.Price * days
+
 	_, err := db.Exec(`
 		UPDATE booking
-		SET hotel_id = ?, user_id = ?, start_date = ?, end_date = ?, price = ?, status = ?, payment_status = ?
+		SET hotel_id = ?, room_id = ?, user_id = ?, start_date = ?, end_date = ?, price = ?, status = ?, payment_status = ?
 		WHERE id = ?
 	`,
-		booking.HotelId, booking.UserId,
-		booking.StartDate, booking.EndDate,
-		booking.Price,
+		booking.HotelId, booking.RoomId,
+		booking.UserId, booking.StartDate,
+		booking.EndDate, price,
 		booking.Status, booking.PaymentStatus,
 		booking.ID,
 	)
@@ -69,4 +99,74 @@ func UpdateBooking(booking model.UpdateBooking, db *sql.DB) error {
 		return fmt.Errorf("ошибка обновления бронирования: %w", err)
 	}
 	return nil
+}
+
+func GetAllBookings(db *sql.DB) ([]model.Booking, error) {
+	rows, err := db.Query("SELECT hotel_id, room_id, user_id, start_date, end_date, price, status, payment_status FROM booking")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var bookings []model.Booking
+
+	for rows.Next() {
+		var booking model.Booking
+
+		err := rows.Scan(
+			&booking.HotelId,
+			&booking.RoomId,
+			&booking.UserId,
+			&booking.StartDate,
+			&booking.EndDate,
+			&booking.Price,
+			&booking.Status,
+			&booking.PaymentStatus,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("ошибка сканирования строки GetAllBookings: %w", err)
+		}
+		bookings = append(bookings, booking)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("ошибка обработки строк GetAllBookings: %w", err)
+	}
+
+	return bookings, nil
+}
+
+func GetBookingByUser(db *sql.DB, userId int) ([]model.Booking, error) {
+	rows, err := db.Query("SELECT id, hotel_id, room_id, user_id, start_date, end_date, price, status, payment_status FROM booking WHERE user_id = ?", userId)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка при выполнении запроса к базе данных: %w", err)
+	}
+	defer rows.Close()
+
+	var bookings []model.Booking
+
+	for rows.Next() {
+		var booking model.Booking
+		err := rows.Scan(
+			&booking.ID,
+			&booking.HotelId,
+			&booking.RoomId,
+			&booking.UserId,
+			&booking.StartDate,
+			&booking.EndDate,
+			&booking.Price,
+			&booking.Status,
+			&booking.PaymentStatus,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("ошибка при чтении данных из результата запроса: %w", err)
+		}
+		bookings = append(bookings, booking)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("ошибка при завершении чтения строк: %w", err)
+	}
+
+	return bookings, nil
 }
