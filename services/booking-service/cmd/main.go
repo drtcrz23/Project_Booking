@@ -1,6 +1,7 @@
 package main
 
 import (
+	pb "../../../GolandProjects/Project_Booking/services/grpc"
 	"BookingService/internal/app"
 	"BookingService/internal/handlers"
 	"BookingService/internal/kafka_producer"
@@ -9,6 +10,8 @@ import (
 	"errors"
 	"fmt"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc"
+	"log"
 	"net/http"
 	"os/signal"
 	"syscall"
@@ -30,12 +33,18 @@ func main() {
 		return
 	}
 
+	grpcConn, err := grpc.Dial("localhost:50051", grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("Failed to connect to gRPC server: %v", err)
+	}
+	defer grpcConn.Close()
+	hotelClient := pb.NewHotelServiceClient(grpcConn)
 	// Пока добавил так, дальше займусь соединением кафки с notifications
 	brokers := []string{"localhost:9092"}
 	producer := kafka_producer.NewKafkaProducer(brokers, "booking_event")
 	defer producer.Close()
 
-	handler := handlers.NewHandler(db, producer)
+	handler := handlers.NewHandler(db, producer, hotelClient)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/booking", func(w http.ResponseWriter, r *http.Request) {

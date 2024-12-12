@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	pb "../../../GolandProjects/Project_Booking/services/grpc"
 	"BookingService/internal/kafka_producer"
 	"BookingService/internal/model"
 	"BookingService/internal/repository"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -13,16 +15,17 @@ import (
 )
 
 type Handler struct {
-	DB       *sql.DB
-	Producer *kafka_producer.KafkaProducer
+	DB          *sql.DB
+	Producer    *kafka_producer.KafkaProducer
+	HotelClient pb.HotelServiceClient
 }
 
 type QueryStatus struct {
 	Status string `json:"status"`
 }
 
-func NewHandler(db *sql.DB, producer *kafka_producer.KafkaProducer) *Handler {
-	return &Handler{DB: db, Producer: producer}
+func NewHandler(db *sql.DB, producer *kafka_producer.KafkaProducer, hotelClient pb.HotelServiceClient) *Handler {
+	return &Handler{DB: db, Producer: producer, HotelClient: hotelClient}
 }
 
 func (handler *Handler) AddBooking(w http.ResponseWriter, r *http.Request) {
@@ -40,6 +43,14 @@ func (handler *Handler) AddBooking(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ctx := context.Background()
+	hotel, err := handler.HotelClient.GetHotelById(ctx, &pb.GetHotelRequest{HotelId: int32(booking.HotelId)})
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to retrieve hotel: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Printf("Retrieved hotel: %v\n", hotel.Name)
 	var room model.Room
 	//hotel, err := handler.getHotelByGRPC(booking.HotelId)
 	//if err != nil {

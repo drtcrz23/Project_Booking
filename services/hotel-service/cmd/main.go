@@ -1,10 +1,14 @@
 package main
 
 import (
+	pb "../../../GolandProjects/Project_Booking/services/grpc"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"google.golang.org/grpc"
+	"log"
+	"net"
 	"net/http"
 	"os/signal"
 	"syscall"
@@ -38,6 +42,22 @@ func main() {
 	}
 
 	handler := handlers.NewHandler(db)
+
+	grpcServer := grpc.NewServer()
+
+	// Регистрируем gRPC-сервис
+	pb.RegisterHotelServiceServer(grpcServer, handler)
+
+	// Запускаем сервер
+	lis, err := net.Listen("tcp", ":50051") // Указываем порт
+	if err != nil {
+		log.Fatalf("Ошибка при запуске gRPC сервера: %v", err)
+	}
+
+	log.Println("Hotel Service запущен на порту 50051")
+	if err := grpcServer.Serve(lis); err != nil {
+		log.Fatalf("Ошибка запуска gRPC-сервера: %v", err)
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/hotels", func(w http.ResponseWriter, r *http.Request) {
