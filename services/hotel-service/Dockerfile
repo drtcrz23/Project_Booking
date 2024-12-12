@@ -1,27 +1,17 @@
-FROM golang:1.19-alpine
+FROM golang:latest
 
-# Set destination for COPY
 WORKDIR /app
 
-RUN apk add --no-cache git
+# Copy the Go module files
+COPY go.mod .
+COPY go.sum .
 
-# Download Go modules
-COPY go.mod go.sum ./
+# Download the Go module dependencies
 RUN go mod download
 
-# Copy the source code. Note the slash at the end, as explained in
-# https://docs.docker.com/reference/dockerfile/#copy
-COPY internal ./internal
-COPY cmd ./cmd
+COPY . .
 
-WORKDIR /app/cmd
-RUN go clean -cache
+RUN go build -o /myapp ./cmd
 
-# Optional:
-# To bind to a TCP port, runtime parameters must be supplied to the docker command.
-# But we can document in the Dockerfile what ports
-# the application is going to listen on by default.
-# https://docs.docker.com/reference/dockerfile/#expose
 EXPOSE 8080
-# Build
-RUN go run .
+CMD ["/myapp"]

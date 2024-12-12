@@ -32,6 +32,11 @@ func main() {
 		return
 	}
 
+	if err := repository.InsertInTable(db); err != nil {
+		fmt.Println("Error creating table:", err)
+		return
+	}
+
 	handler := handlers.NewHandler(db)
 
 	mux := http.NewServeMux()
@@ -55,7 +60,22 @@ func main() {
 		case "PATCH":
 			handler.SetHotel(w, r)
 		case "GET":
-			handler.GetHotelById(w, r)
+			handler.GetHotelsByHotelier(w, r)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/room", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "POST":
+			handler.AddRoom(w, r)
+		case "GET":
+			handler.GetRoomsByHotel(w, r)
+		case "PATCH":
+			handler.SetRoom(w, r)
+		case "DELETE":
+			handler.DeleteRoom(w, r)
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
