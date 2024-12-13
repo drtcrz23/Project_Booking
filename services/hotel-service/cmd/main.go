@@ -1,11 +1,11 @@
 package main
 
 import (
-	pb "../../../GolandProjects/Project_Booking/services/grpc"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	pb "github.com/drtcrz23/Project_Booking/services/grpc"
 	"google.golang.org/grpc"
 	"log"
 	"net"

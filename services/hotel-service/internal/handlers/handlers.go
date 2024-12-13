@@ -1,7 +1,8 @@
 package handlers
 
 import (
-	grpc "../../../GolandProjects/Project_Booking/services/grpc"
+	pb "github.com/drtcrz23/Project_Booking/services/grpc"
+
 	"HotelService/internal/model"
 	"HotelService/internal/repository"
 	"context"
@@ -16,7 +17,7 @@ import (
 
 type Handler struct {
 	DB *sql.DB
-	grpc.UnimplementedHotelServiceServer
+	pb.UnimplementedHotelServiceServer
 }
 
 type QueryStatus struct {
@@ -27,16 +28,16 @@ func NewHandler(db *sql.DB) *Handler {
 	return &Handler{DB: db}
 }
 
-func (h *Handler) GetHotelById(ctx context.Context, req *grpc.GetHotelRequest) (*grpc.Hotel, error) {
+func (h *Handler) GetHotelById(ctx context.Context, req *pb.GetHotelRequest) (*pb.Hotel, error) {
 	// Получаем отель из базы данных
 	hotel, err := repository.GetHotelById(int(req.HotelId), h.DB)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка при получении отеля: %v", err)
 	}
 
-	var grpcRooms []*grpc.Room
+	var grpcRooms []*pb.Room
 	for _, room := range hotel.Rooms {
-		grpcRoom := &grpc.Room{
+		grpcRoom := &pb.Room{
 			Id:         int32(room.ID),
 			HotelId:    int32(room.HotelId),
 			RoomNumber: room.RoomNumber,
@@ -48,7 +49,7 @@ func (h *Handler) GetHotelById(ctx context.Context, req *grpc.GetHotelRequest) (
 	}
 
 	// Возвращаем полученные данные в формате gRPC
-	return &grpc.Hotel{
+	return &pb.Hotel{
 		Id:         int32(hotel.ID),
 		Name:       hotel.Name,
 		Price:      hotel.Price,

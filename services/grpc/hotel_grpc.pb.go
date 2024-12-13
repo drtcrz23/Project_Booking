@@ -4,7 +4,7 @@
 // - protoc             v3.21.12
 // source: hotel.proto
 
-package grpc_hotel
+package hotelgrpc
 
 import (
 	context "context"

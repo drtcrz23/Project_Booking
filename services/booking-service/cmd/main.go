@@ -1,7 +1,6 @@
 package main
 
 import (
-	pb "../../../GolandProjects/Project_Booking/services/grpc"
 	"BookingService/internal/app"
 	"BookingService/internal/handlers"
 	"BookingService/internal/kafka_producer"
@@ -9,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	pb "github.com/drtcrz23/Project_Booking/services/grpc"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"log"
