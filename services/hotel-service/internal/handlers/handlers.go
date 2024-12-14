@@ -1,8 +1,11 @@
 package handlers
 
 import (
+	pb "github.com/drtcrz23/Project_Booking/services/grpc"
+
 	"HotelService/internal/model"
 	"HotelService/internal/repository"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -14,6 +17,7 @@ import (
 
 type Handler struct {
 	DB *sql.DB
+	pb.UnimplementedHotelServiceServer
 }
 
 type QueryStatus struct {
@@ -22,6 +26,36 @@ type QueryStatus struct {
 
 func NewHandler(db *sql.DB) *Handler {
 	return &Handler{DB: db}
+}
+
+func (h *Handler) GetHotelById(ctx context.Context, req *pb.GetHotelRequest) (*pb.Hotel, error) {
+	// Получаем отель из базы данных
+	hotel, err := repository.GetHotelById(int(req.HotelId), h.DB)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка при получении отеля: %v", err)
+	}
+
+	var grpcRooms []*pb.Room
+	for _, room := range hotel.Rooms {
+		grpcRoom := &pb.Room{
+			Id:         int32(room.ID),
+			HotelId:    int32(room.HotelId),
+			RoomNumber: room.RoomNumber,
+			Type:       room.Type,
+			Price:      float32(room.Price), // Конвертируем из float64 в float32
+			Status:     room.Status,
+		}
+		grpcRooms = append(grpcRooms, grpcRoom)
+	}
+
+	// Возвращаем полученные данные в формате gRPC
+	return &pb.Hotel{
+		Id:         int32(hotel.ID),
+		Name:       hotel.Name,
+		Price:      hotel.Price,
+		HotelierId: int32(hotel.HotelierId),
+		Rooms:      grpcRooms,
+	}, nil
 }
 
 func (h *Handler) AddHotel(w http.ResponseWriter, r *http.Request) {
@@ -121,7 +155,7 @@ func (h *Handler) GetHotelsByHotelier(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(hotels)
 }
 
-func (h *Handler) GetHotelById(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) GetHotelByIdUsers(w http.ResponseWriter, r *http.Request) {
 	idStr := r.URL.Query().Get("id")
 	if idStr == "" {
 		http.Error(w, "Missing 'id' parameter", http.StatusBadRequest)
