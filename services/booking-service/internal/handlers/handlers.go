@@ -3,15 +3,18 @@ package handlers
 import (
 	"BookingService/internal/kafka_producer"
 	"BookingService/internal/model"
+	"BookingService/internal/parser_data"
 	"BookingService/internal/repository"
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	pb "github.com/drtcrz23/Project_Booking/services/grpc"
+	pb "hotelgrpc"
 	"io"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type Handler struct {
@@ -63,7 +66,33 @@ func (handler *Handler) AddBooking(w http.ResponseWriter, r *http.Request) {
 	//	return
 	//}
 
-	err = repository.AddBooking(booking, room, handler.DB)
+	startDate := booking.StartDate
+	endDate := booking.EndDate
+
+	days, err_data := parser_data.ParseAndCalculateDays(startDate, endDate)
+	if err_data != nil {
+		return
+	}
+
+	price := room.Price * days
+	booking.Price = int(price)
+
+	paymentRequest := map[string]interface{}{
+		"user_id": booking.UserId,
+		"price":   booking.Price,
+	}
+	paymentResponse, err := handler.sendPaymentRequest(paymentRequest)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Payment service error: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	if paymentResponse.Status != "ok" {
+		http.Error(w, "Payment failed", http.StatusPaymentRequired)
+		return
+	}
+
+	err = repository.AddBooking(&booking, room, handler.DB)
 	if err != nil {
 		http.Error(w, "Ошибка при добавление бронирования", http.StatusBadRequest)
 		return
@@ -216,4 +245,43 @@ func (handler *Handler) GetBookingByUser(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "Ошибка при отправке данных", http.StatusInternalServerError)
 		return
 	}
+}
+
+func (handler *Handler) sendPaymentRequest(request map[string]interface{}) (*PaymentResponse, error) {
+	url := "http://localhost:8083/pay"
+
+	data, err := json.Marshal(request)
+	if err != nil {
+		return nil, fmt.Errorf("failed to serialize payment request: %v", err)
+	}
+
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create payment request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send payment request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("payment service returned error: %s", string(body))
+	}
+
+	var paymentResponse PaymentResponse
+	err = json.NewDecoder(resp.Body).Decode(&paymentResponse)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode payment response: %v", err)
+	}
+
+	return &paymentResponse, nil
+}
+
+type PaymentResponse struct {
+	Status string `json:"status"`
 }

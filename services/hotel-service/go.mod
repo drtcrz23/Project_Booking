@@ -1,4 +1,4 @@
-module HotelService
+module github.com/drtcrz23/Project_Booking/HotelService
 
 go 1.23
 
@@ -17,4 +17,4 @@ require (
 	google.golang.org/protobuf v1.34.2 // indirect
 )
 
-replace github.com/drtcrz23/Project_Booking/services/grpc => ../grpc
+replace github.com/drtcrz23/Project_Booking/services/grpc => ./internal/grpc

@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	pb "github.com/drtcrz23/Project_Booking/services/grpc"
+	pb "hotelgrpc"
 
 	"HotelService/internal/model"
 	"HotelService/internal/repository"

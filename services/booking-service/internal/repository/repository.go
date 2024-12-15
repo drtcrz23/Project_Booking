@@ -34,7 +34,7 @@ func CreateTable(db *sql.DB) error {
 	return err
 }
 
-func AddBooking(booking model.Booking, room model.Room, db *sql.DB) error {
+func AddBooking(booking *model.Booking, room model.Room, db *sql.DB) error {
 	if room.Status != "available" {
 		return errors.New("room is not available")
 	}
@@ -48,7 +48,7 @@ func AddBooking(booking model.Booking, room model.Room, db *sql.DB) error {
 	}
 
 	price := room.Price * days
-
+	booking.Price = int(price)
 	_, err := db.Exec(`INSERT INTO booking (hotel_id, roomd_id, user_id, start_date, end_date, price, status, payment_status)
 						VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		booking.HotelId, booking.RoomId,
