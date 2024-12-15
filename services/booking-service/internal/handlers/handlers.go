@@ -6,11 +6,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/kafka_producer"
-	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/model"
-	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/parser_data"
-	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/repository"
-	pb "github.com/drtcrz23/Project_Booking/services/hotel-service/pkg/api"
 	"io"
 	"log"
 	"net/http"
@@ -93,19 +88,6 @@ func (handler *Handler) AddBooking(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = handler.sendPaymentRequest(paymentRequest)
-	user := model.User{Id: 999,
-		Name:    "fakename",
-		Surname: "fakesurname",
-		Phone:   "fakenumber",
-		Email:   "fakeemail@gmail.com",
-		Balance: 999}
-
-	message_text := CreateTextMessageForBookingEvent(&booking, &room, hotel.Name, &user)
-	handler.Producer.SendMessage(user.Email, message_text)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Payment service error: %v", err), http.StatusInternalServerError)
-		return
-	}
 
 	version := QueryStatus{
 		Status: "Done",
@@ -257,7 +239,7 @@ func (handler *Handler) sendPaymentRequest(request map[string]interface{}) error
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("payment service returned error: %s", string(body))
+		return fmt.Errorf("payment service returned error: %s", string(body))
 	}
 
 	log.Println("Payment request sent successfully")
@@ -276,11 +258,42 @@ func (handler *Handler) SendMessageAfterSuccessfullyPay(w http.ResponseWriter, r
 		http.Error(w, paymentResp.Message, http.StatusBadRequest)
 	}
 
-	//booking, err := repository.GetBookingById(handler.DB, paymentResp.BookingId)
-	//if err != nil {
-	//	http.Error(w, fmt.Sprintf("Failed to get booking: %v", err), http.StatusInternalServerError)
-	//	return
-	//}
+	booking, err := repository.GetBookingById(handler.DB, paymentResp.BookingId)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to get booking: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	user, err := getUserById(booking.UserId)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to get user: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	ctx := context.Background()
+	hotel, err := handler.HotelClient.GetHotelById(ctx, &pb.GetHotelRequest{HotelId: int32(booking.HotelId)})
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to retrieve hotel: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	var room model.Room
+	for _, cur := range hotel.Rooms {
+		if cur.Id == int32(booking.RoomId) {
+			room = ConvertToModelRoom(cur)
+			break
+		}
+	}
+
+	message_text := CreateTextMessageForBookingEvent(&booking, &room, hotel.Name, user)
+	handler.Producer.SendMessage(user.Email, message_text)
+
+	version := QueryStatus{
+		Status: "Done",
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(version)
 }
 
 type PaymentResponse struct {
@@ -294,4 +307,26 @@ func CreateTextMessageForBookingEvent(booking *model.Booking, room *model.Room, 
 	return string("Dear, " + user.Name + " we notify you, that you have booked a room " + room.Type +
 		" with number " + string(room.RoomNumber) + " in hotel " + hotel_name + " for the dates from " +
 		booking.StartDate + " to " + booking.EndDate + ".\n" + "It's cost is " + string(booking.Price))
+}
+
+func getUserById(userId int) (*model.User, error) {
+	url := fmt.Sprintf("http://localhost:8082/user?id=%d", userId)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to get user, status code: %d", resp.StatusCode)
+	}
+
+	var user model.User
+	err = json.NewDecoder(resp.Body).Decode(&user)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode user response: %w", err)
+	}
+
+	return &user, nil
 }
