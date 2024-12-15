@@ -1,11 +1,11 @@
 package handlers
 
 import (
-	"UserService/internal/model"
-	"UserService/internal/repository"
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/drtcrz23/Project_Booking/services/user-service/internal/model"
+	"github.com/drtcrz23/Project_Booking/services/user-service/internal/repository"
 	"io"
 	"net/http"
 	"strconv"

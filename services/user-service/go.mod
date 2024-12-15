@@ -1,4 +1,4 @@
-module UserService
+module github.com/drtcrz23/Project_Booking/services/user-service
 
 go 1.23.4
 

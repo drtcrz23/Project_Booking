@@ -1,11 +1,11 @@
 package repository
 
 import (
-	"BookingService/internal/model"
-	"BookingService/internal/parser_data"
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/model"
+	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/parser_data"
 
 	_ "github.com/lib/pq"
 )
@@ -39,7 +39,7 @@ func CreateTable(db *sql.DB) error {
 	return err
 }
 
-func AddBooking(booking model.Booking, room model.Room, db *sql.DB) error {
+func AddBooking(booking *model.Booking, room model.Room, db *sql.DB) error {
 	if room.Status != "available" {
 		return errors.New("room is not available")
 	}

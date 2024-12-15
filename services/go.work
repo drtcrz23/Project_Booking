@@ -2,7 +2,8 @@ go 1.23.4
 
 use (
 	./booking-service
-	./grpc
 	./hotel-service
 	./user-service
+	./notification-service
+	./payment-service
 )

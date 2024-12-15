@@ -1,18 +1,18 @@
 package main
 
 import (
-	"UserService/internal/repository"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/drtcrz23/Project_Booking/services/user-service/internal/repository"
 	"net/http"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"UserService/internal/app"
-	"UserService/internal/handlers"
+	"github.com/drtcrz23/Project_Booking/services/user-service/internal/app"
+	"github.com/drtcrz23/Project_Booking/services/user-service/internal/handlers"
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/sync/errgroup"
 )
