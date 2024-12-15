@@ -21,27 +21,40 @@ func main() {
 	}
 	defer c.Close()
 
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
+	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 
-	group, ctx := errgroup.WithContext(ctx)
+	cancelCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	group, ctx := errgroup.WithContext(cancelCtx)
 	group.Go(func() error {
-		if err := c.PrintMessages();
-		err != nil {
-			fmt.Printf("error in handling messages: %s\n", err)
-			return fmt.Errorf("failed to print messages: %w", err)
-		}
-		return nil
-	})
+        for {
+			err := c.PrintMessages()
+            if err != nil {
+                fmt.Printf("error in handling messages: %s\n", err)
+				cancel()
+                return fmt.Errorf("failed to print messages: %w", err)
+            }
+            time.Sleep(5 * time.Second)
+        }
+    })
 
 	group.Go(func() error {
-		<-ctx.Done() 
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
-		defer cancel()
-	
-		<-shutdownCtx.Done()
-		c.Close()
-	
-		return nil
-	})
+        <-ctx.Done()
+        fmt.Println("Shutting down...")
+
+        shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+        defer cancel()
+
+        c.Close()
+
+        <-shutdownCtx.Done()
+        return nil
+    })
+
+    if err := group.Wait(); err != nil {
+        log.Fatalf("Program terminated with error: %v", err)
+    }
+
+    fmt.Println("Program gracefully terminated.")
 }
