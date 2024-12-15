@@ -12,8 +12,8 @@ import (
 )
 
 func main() {
-	topic := "chat-room"
-	brokers := []string{"localhost:19092"}
+	brokers := []string{"localhost:9092"}
+	topic := "BookingEventsQueue"
 
 	c, err := kafkaConsumeTools.NewConsumer(brokers, topic)
 	if err != nil {

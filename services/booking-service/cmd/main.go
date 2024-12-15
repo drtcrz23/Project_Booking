@@ -3,7 +3,7 @@ package main
 import (
 	"BookingService/internal/app"
 	"BookingService/internal/handlers"
-	"BookingService/internal/kafka_producer"
+	"BookingService/internal/kafkaProduceTools"
 	"BookingService/internal/repository"
 	"context"
 	"errors"
@@ -39,9 +39,13 @@ func main() {
 	}
 	defer grpcConn.Close()
 	hotelClient := pb.NewHotelServiceClient(grpcConn)
-	// Пока добавил так, дальше займусь соединением кафки с notifications
+
 	brokers := []string{"localhost:9092"}
-	producer := kafka_producer.NewKafkaProducer(brokers, "booking_event")
+	topic := "BookingEventsQueue"
+	producer, err := kafkaProduceTools.New(brokers, topic)
+	if (err != nil ) {
+		log.Fatalf("Failed to create producer")
+	}
 	defer producer.Close()
 
 	handler := handlers.NewHandler(db, producer, hotelClient)
@@ -100,6 +104,8 @@ func main() {
 			return err
 		}
 		fmt.Println("after server shutdown")
+
+		producer.Close();
 
 		return nil
 	})

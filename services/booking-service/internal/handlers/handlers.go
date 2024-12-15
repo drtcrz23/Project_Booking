@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"BookingService/internal/kafka_producer"
+	"BookingService/internal/kafkaProduceTools"
 	"BookingService/internal/model"
 	"BookingService/internal/repository"
 	"context"
@@ -16,7 +16,7 @@ import (
 
 type Handler struct {
 	DB          *sql.DB
-	Producer    *kafka_producer.KafkaProducer
+	Producer    *kafkaProduceTools.Producer
 	HotelClient pb.HotelServiceClient
 }
 
@@ -24,7 +24,7 @@ type QueryStatus struct {
 	Status string `json:"status"`
 }
 
-func NewHandler(db *sql.DB, producer *kafka_producer.KafkaProducer, hotelClient pb.HotelServiceClient) *Handler {
+func NewHandler(db *sql.DB, producer *kafkaProduceTools.KafkaProducer, hotelClient pb.HotelServiceClient) *Handler {
 	return &Handler{DB: db, Producer: producer, HotelClient: hotelClient}
 }
 
@@ -69,23 +69,18 @@ func (handler *Handler) AddBooking(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	event := map[string]interface{}{
-		"hotel_id":       booking.HotelId,
-		"user_id":        booking.UserId,
-		"start_date":     booking.StartDate,
-		"end_date":       booking.EndDate,
-		"price":          booking.Price,
-		"status":         booking.Status,
-		"payment_status": booking.PaymentStatus,
-	}
+	// ДОБАВИТЬ ИНИЦИАЛИЗАЦИЮ ЮЗЕРА
 
-	message, err := json.Marshal(event)
-	if err != nil {
-		http.Error(w, "Ошибка при подготовке события Kafka", http.StatusInternalServerError)
-		return
-	}
+	user := model.User{Id:999,
+	Name:"fakename",
+	Surname :"fakesurname",
+	Phone:"fakenumber",
+	Email:"fakeemail@gmail.com",
+	Balance: 999}
 
-	err = handler.Producer.Publish(r.Context(), "booking_event", message)
+	message_text := CreateTextMessageForBookingEvent(&booking, &room, hotel.Name, &user)
+
+	err = handler.Producer.SendMessage(user.Email, message_text)
 	if err != nil {
 		http.Error(w, "Ошибка при отправке события в Kafka", http.StatusInternalServerError)
 		return
@@ -108,6 +103,12 @@ func ConvertToModelRoom(grpcRoom *pb.Room) model.Room {
 		Price:      float64(grpcRoom.Price),
 		Status:     string(grpcRoom.Status),
 	}
+}
+
+func CreateTextMessageForBookingEvent(booking *model.Booking, room *model.Room, hotel_name string, user *model.User) string {
+	return string("Dear, " + user.Name + " we notify you, that you have booked a room " + room.Type +
+	" with number " + string(room.RoomNumber) + " in hotel " + hotel_name + " for the dates from " +
+	booking.StartDate + " to " + booking.EndDate + ".\n" + "It's cost is " + string(booking.Price))
 }
 
 func (handler *Handler) SetBooking(w http.ResponseWriter, r *http.Request) {
