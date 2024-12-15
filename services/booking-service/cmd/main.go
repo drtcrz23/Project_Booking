@@ -1,17 +1,16 @@
 package main
 
 import (
-	"BookingService/internal/app"
-	"BookingService/internal/handlers"
-	"BookingService/internal/kafka_producer"
-	"BookingService/internal/repository"
 	"context"
 	"errors"
 	"fmt"
-	pb "github.com/drtcrz23/Project_Booking/services/grpc"
+	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/app"
+	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/handlers"
+	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/kafka_producer"
+	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/repository"
+	pb "github.com/drtcrz23/Project_Booking/services/hotel-service/pkg/api"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
-	pb "hotelgrpc"
 	"log"
 	"net/http"
 	"os/signal"

@@ -1,14 +1,13 @@
 package handlers
 
 import (
-	pb "github.com/drtcrz23/Project_Booking/services/grpc"
-
-	"HotelService/internal/model"
-	"HotelService/internal/repository"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/drtcrz23/Project_Booking/services/hotel-service/internal/model"
+	"github.com/drtcrz23/Project_Booking/services/hotel-service/internal/repository"
+	pb "github.com/drtcrz23/Project_Booking/services/hotel-service/pkg/api"
 	"io"
 	"net/http"
 	"strconv"

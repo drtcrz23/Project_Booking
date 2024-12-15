@@ -3,12 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/drtcrz23/Project_Booking/services/notification-service/internal/kafkaConsumeTools"
+	"golang.org/x/sync/errgroup"
 	"log"
-	"time"
 	"os/signal"
 	"syscall"
-	"golang.org/x/sync/errgroup"
-	"NotificationService/internal/kafkaConsumeTools"
+	"time"
 )
 
 func main() {
@@ -26,8 +26,7 @@ func main() {
 
 	group, ctx := errgroup.WithContext(ctx)
 	group.Go(func() error {
-		if err := c.PrintMessages();
-		err != nil {
+		if err := c.PrintMessages(); err != nil {
 			fmt.Printf("error in handling messages: %s\n", err)
 			return fmt.Errorf("failed to print messages: %w", err)
 		}
@@ -35,13 +34,13 @@ func main() {
 	})
 
 	group.Go(func() error {
-		<-ctx.Done() 
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+		<-ctx.Done()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-	
+
 		<-shutdownCtx.Done()
 		c.Close()
-	
+
 		return nil
 	})
 }

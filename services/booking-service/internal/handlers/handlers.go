@@ -1,17 +1,20 @@
 package handlers
 
 import (
-	pb "../../../GolandProjects/Project_Booking/services/grpc"
-	"BookingService/internal/kafka_producer"
-	"BookingService/internal/model"
-	"BookingService/internal/repository"
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/kafka_producer"
+	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/model"
+	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/parser_data"
+	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/repository"
+	pb "github.com/drtcrz23/Project_Booking/services/hotel-service/pkg/api"
 	"io"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type Handler struct {

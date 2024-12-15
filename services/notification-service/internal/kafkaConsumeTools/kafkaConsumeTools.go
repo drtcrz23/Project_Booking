@@ -4,15 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
+	"github.com/drtcrz23/Project_Booking/services/notification-service/internal/models"
 	"github.com/google/uuid"
 	"github.com/twmb/franz-go/pkg/kgo"
-	"NotificationService/internal/models"
+	"os"
 )
 
 type Consumer struct {
-	client *kgo.Client
-	topic  string
+	client      *kgo.Client
+	topic       string
 	topicOutput *os.File
 }
 
@@ -29,19 +29,19 @@ func NewConsumer(brokers []string, topic string) (*Consumer, error) {
 	}
 
 	file, err := os.Create(topic + ".txt")
-	if err != nil{
-        return nil, err
-    }
-    defer file.Close() 
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
 
 	return &Consumer{client: client, topic: topic, topicOutput: file}, nil
 }
 
-func (c *Consumer) PrintMessages() (error) {
+func (c *Consumer) PrintMessages() error {
 	ctx := context.Background()
 	for {
 		fetches := c.client.PollFetches(ctx)
-		if err := fetches.Errors();  err != nil {
+		if err := fetches.Errors(); err != nil {
 			return fmt.Errorf("error in fetching %v", err)
 		}
 		iter := fetches.RecordIter()

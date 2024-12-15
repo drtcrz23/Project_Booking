@@ -1,10 +1,10 @@
 package repository
 
 import (
-	"UserService/internal/model"
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/drtcrz23/Project_Booking/services/user-service/internal/model"
 )
 
 func CReateDBConnection(dbName string) (*sql.DB, error) {

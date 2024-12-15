@@ -1,10 +1,10 @@
 package repository
 
 import (
-	"HotelService/internal/model"
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/drtcrz23/Project_Booking/services/hotel-service/internal/model"
 
 	_ "github.com/lib/pq"
 )

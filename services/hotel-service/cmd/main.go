@@ -12,14 +12,14 @@ import (
 	"syscall"
 	"time"
 
-	pb "github.com/drtcrz23/Project_Booking/services/grpc"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 
-	"HotelService/internal/app"
-	"HotelService/internal/handlers"
-	"HotelService/internal/repository"
+	"github.com/drtcrz23/Project_Booking/services/hotel-service/internal/app"
+	"github.com/drtcrz23/Project_Booking/services/hotel-service/internal/handlers"
+	"github.com/drtcrz23/Project_Booking/services/hotel-service/internal/repository"
+	pb "github.com/drtcrz23/Project_Booking/services/hotel-service/pkg/api"
 
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/sync/errgroup"
