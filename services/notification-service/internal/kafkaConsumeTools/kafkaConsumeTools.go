@@ -24,6 +24,7 @@ func NewConsumer(brokers []string, topic string) (*Consumer, error) {
 		kgo.ConsumeTopics(topic),
 		kgo.ConsumeResetOffset(kgo.NewOffset().AtStart()),
 	)
+
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +33,7 @@ func NewConsumer(brokers []string, topic string) (*Consumer, error) {
 	if err != nil{
         return nil, err
     }
-    defer file.Close() 
+    defer file.Close()
 
 	return &Consumer{client: client, topic: topic, topicOutput: file}, nil
 }
