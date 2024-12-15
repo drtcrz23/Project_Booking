@@ -54,7 +54,7 @@ func handlePayment(w http.ResponseWriter, r *http.Request) {
 }
 
 func processPayment(req PaymentRequest) (string, string) {
-	success := rand.Intn(2) == 0
+	success := true //rand.Intn(2) == 0
 
 	if success {
 		return "ok", fmt.Sprintf("Payment of %.2f for user %d successful", req.Price, req.UserID)

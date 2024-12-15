@@ -6,20 +6,21 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/kafka_producer"
-	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/model"
-	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/parser_data"
-	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/repository"
-	pb "github.com/drtcrz23/Project_Booking/services/hotel-service/pkg/api"
 	"io"
 	"net/http"
 	"strconv"
 	"time"
+
+	kafkaProduceTools "github.com/drtcrz23/Project_Booking/services/booking-service/internal/kafkaProducerTools"
+	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/model"
+	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/parser_data"
+	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/repository"
+	pb "github.com/drtcrz23/Project_Booking/services/hotel-service/pkg/api"
 )
 
 type Handler struct {
 	DB          *sql.DB
-	Producer    *kafka_producer.KafkaProducer
+	Producer    *kafkaProduceTools.Producer
 	HotelClient pb.HotelServiceClient
 }
 
@@ -27,7 +28,7 @@ type QueryStatus struct {
 	Status string `json:"status"`
 }
 
-func NewHandler(db *sql.DB, producer *kafka_producer.KafkaProducer, hotelClient pb.HotelServiceClient) *Handler {
+func NewHandler(db *sql.DB, producer *kafkaProduceTools.Producer, hotelClient pb.HotelServiceClient) *Handler {
 	return &Handler{DB: db, Producer: producer, HotelClient: hotelClient}
 }
 
@@ -53,8 +54,14 @@ func (handler *Handler) AddBooking(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("Retrieved hotel: %v\n", hotel.Name)
 	var room model.Room
+	for _, cur := range hotel.Rooms {
+		if cur.Id == int32(booking.RoomId) {
+			room = ConvertToModelRoom(cur)
+			break
+		}
+	}
+	fmt.Printf("Retrieved hotel: %v\n", hotel.Name)
 	//hotel, err := handler.getHotelByGRPC(booking.HotelId)
 	//if err != nil {
 	//	http.Error(w, fmt.Sprintf("Failed to retrieve hotel: %v", err), http.StatusInternalServerError)
@@ -87,6 +94,7 @@ func (handler *Handler) AddBooking(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmt.Printf("Room: %v\n", room.Status)
 	err = repository.AddBooking(&booking, room, handler.DB)
 	if err != nil {
 		errorMessage := fmt.Sprintf("Ошибка при добавление бронирования: %v", err)
@@ -94,23 +102,15 @@ func (handler *Handler) AddBooking(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	event := map[string]interface{}{
-		"hotel_id":       booking.HotelId,
-		"user_id":        booking.UserId,
-		"start_date":     booking.StartDate,
-		"end_date":       booking.EndDate,
-		"price":          booking.Price,
-		"status":         booking.Status,
-		"payment_status": booking.PaymentStatus,
-	}
+	user := model.User{Id: 999,
+		Name:    "fakename",
+		Surname: "fakesurname",
+		Phone:   "fakenumber",
+		Email:   "fakeemail@gmail.com",
+		Balance: 999}
 
-	message, err := json.Marshal(event)
-	if err != nil {
-		http.Error(w, "Ошибка при подготовке события Kafka", http.StatusInternalServerError)
-		return
-	}
-
-	err = handler.Producer.Publish(r.Context(), "booking_event", message)
+	message_text := CreateTextMessageForBookingEvent(&booking, &room, hotel.Name, &user)
+	handler.Producer.SendMessage(user.Email, message_text)
 	if err != nil {
 		errorMessage := fmt.Sprintf("Ошибка при отправке события в Kafka: %v", err)
 		http.Error(w, errorMessage, http.StatusInternalServerError)
@@ -281,4 +281,10 @@ func (handler *Handler) sendPaymentRequest(request map[string]interface{}) (*Pay
 
 type PaymentResponse struct {
 	Status string `json:"status"`
+}
+
+func CreateTextMessageForBookingEvent(booking *model.Booking, room *model.Room, hotel_name string, user *model.User) string {
+	return string("Dear, " + user.Name + " we notify you, that you have booked a room " + room.Type +
+		" with number " + string(room.RoomNumber) + " in hotel " + hotel_name + " for the dates from " +
+		booking.StartDate + " to " + booking.EndDate + ".\n" + "It's cost is " + string(booking.Price))
 }
