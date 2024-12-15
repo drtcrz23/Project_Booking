@@ -2,17 +2,33 @@ syntax = "proto3";
 
 package hotel;
 
+option go_package = "../../../grpc";
+
 service HotelService {
-  rpc GetHotelById (GetHotelRequest) returns (GetHotelResponse);
+  // Метод получения отеля по ID
+  rpc GetHotelById (GetHotelRequest) returns (Hotel);
 }
 
+// Запрос для получения отеля по ID
 message GetHotelRequest {
   int32 hotel_id = 1;
 }
 
-message GetHotelResponse {
+// Структура отеля
+message Hotel {
   int32 id = 1;
   string name = 2;
   string price = 3;
   int32 hotelier_id = 4;
+  repeated Room rooms = 5;
+}
+
+// Структура комнаты
+message Room {
+  int32 id = 1;
+  int32 hotel_id = 2;
+  string room_number = 3;
+  string type = 4;
+  float price = 5;
+  string status = 6; // Статус комнаты (available, booked, maintenance)
 }
