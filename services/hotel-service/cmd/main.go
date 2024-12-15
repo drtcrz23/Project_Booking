@@ -1,18 +1,21 @@
 package main
 
 import (
-	pb "../../../GolandProjects/Project_Booking/services/grpc"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"google.golang.org/grpc"
 	"log"
 	"net"
 	"net/http"
 	"os/signal"
 	"syscall"
 	"time"
+
+	pb "github.com/drtcrz23/Project_Booking/services/grpc"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"google.golang.org/grpc"
 
 	"HotelService/internal/app"
 	"HotelService/internal/handlers"
@@ -48,18 +51,20 @@ func main() {
 	// Регистрируем gRPC-сервис
 	pb.RegisterHotelServiceServer(grpcServer, handler)
 
-	// Запускаем сервер
-	lis, err := net.Listen("tcp", ":50051") // Указываем порт
-	if err != nil {
-		log.Fatalf("Ошибка при запуске gRPC сервера: %v", err)
-	}
+	metric := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "my_custom_metric",
+			Help: "An example custom metric",
+		},
+		[]string{"label_name"},
+	)
+	prometheus.MustRegister(metric)
 
-	log.Println("Hotel Service запущен на порту 50051")
-	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("Ошибка запуска gRPC-сервера: %v", err)
-	}
+	// Пример инкрементирования счетчика
+	metric.WithLabelValues("example_label").Inc()
 
 	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.Handler())
 	mux.HandleFunc("/hotels", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
@@ -122,6 +127,19 @@ func main() {
 		}
 		fmt.Println("after listener")
 
+		return nil
+	})
+	group.Go(func() error {
+		// Запускаем сервер
+		lis, err := net.Listen("tcp", ":50051") // Указываем порт
+		if err != nil {
+			log.Fatalf("Ошибка при запуске gRPC сервера: %v", err)
+		}
+
+		log.Println("Hotel Service запущен на порту 50051")
+		if err := grpcServer.Serve(lis); err != nil {
+			log.Fatalf("Ошибка запуска gRPC-сервера: %v", err)
+		}
 		return nil
 	})
 	group.Go(func() error {

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	pb "../../../GolandProjects/Project_Booking/services/grpc"
 	"BookingService/internal/kafka_producer"
 	"BookingService/internal/model"
 	"BookingService/internal/repository"
@@ -12,6 +11,8 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+
+	pb "github.com/drtcrz23/Project_Booking/services/grpc"
 )
 
 type Handler struct {
@@ -49,9 +50,14 @@ func (handler *Handler) AddBooking(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Failed to retrieve hotel: %v", err), http.StatusInternalServerError)
 		return
 	}
-
-	fmt.Printf("Retrieved hotel: %v\n", hotel.Name)
 	var room model.Room
+	for _, cur := range hotel.Rooms {
+		if cur.Id == int32(booking.RoomId) {
+			room = ConvertToModelRoom(cur)
+			break
+		}
+	}
+	fmt.Printf("Retrieved hotel: %v\n", hotel.Name)
 	//hotel, err := handler.getHotelByGRPC(booking.HotelId)
 	//if err != nil {
 	//	http.Error(w, fmt.Sprintf("Failed to retrieve hotel: %v", err), http.StatusInternalServerError)
@@ -60,7 +66,8 @@ func (handler *Handler) AddBooking(w http.ResponseWriter, r *http.Request) {
 
 	err = repository.AddBooking(booking, room, handler.DB)
 	if err != nil {
-		http.Error(w, "Ошибка при добавление бронирования", http.StatusBadRequest)
+		errorMessage := fmt.Sprintf("Ошибка при добавление бронирования: %v", err)
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 
@@ -82,7 +89,8 @@ func (handler *Handler) AddBooking(w http.ResponseWriter, r *http.Request) {
 
 	err = handler.Producer.Publish(r.Context(), "booking_event", message)
 	if err != nil {
-		http.Error(w, "Ошибка при отправке события в Kafka", http.StatusInternalServerError)
+		errorMessage := fmt.Sprintf("Ошибка при отправке события в Kafka: %v", err)
+		http.Error(w, errorMessage, http.StatusInternalServerError)
 		return
 	}
 
@@ -92,6 +100,17 @@ func (handler *Handler) AddBooking(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(version)
+}
+
+func ConvertToModelRoom(grpcRoom *pb.Room) model.Room {
+	return model.Room{
+		ID:         int(grpcRoom.Id),
+		HotelId:    int(grpcRoom.HotelId),
+		RoomNumber: string(grpcRoom.RoomNumber),
+		Type:       string(grpcRoom.Type),
+		Price:      float64(grpcRoom.Price),
+		Status:     string(grpcRoom.Status),
+	}
 }
 
 func (handler *Handler) SetBooking(w http.ResponseWriter, r *http.Request) {
