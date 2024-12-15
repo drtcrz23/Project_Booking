@@ -16,18 +16,18 @@ services:
       example_net:
         aliases:
           - user_postgres
-  backend-user-service:
-    build:
-      context: .
-    container_name: backend-user-service
-    networks:
-      example_net:
-        aliases:
-          - backend-user-service
-    ports:
-      - 8082:8082
-    depends_on:
-      - user_databases
+  # backend-user-service:
+  #   build:
+  #     context: .
+  #   container_name: backend-user-service
+  #   networks:
+  #     example_net:
+  #       aliases:
+  #         - backend-user-service
+  #   ports:
+  #     - 8082:8082
+  #   depends_on:
+  #     - user_databases
 
 networks:
   example_net:

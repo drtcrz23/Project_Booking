@@ -4,12 +4,13 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/drtcrz23/Project_Booking/services/user-service/internal/model"
-	"github.com/drtcrz23/Project_Booking/services/user-service/internal/repository"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/drtcrz23/Project_Booking/services/user-service/internal/model"
+	"github.com/drtcrz23/Project_Booking/services/user-service/internal/repository"
 )
 
 type Handler struct {
@@ -91,7 +92,7 @@ func (h *Handler) GetUserById(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid 'id' parameter", http.StatusBadRequest)
 		return
 	}
-
+	fmt.Println(id)
 	user, err := repository.GetUserById(id, h.DB)
 	if err != nil {
 		if strings.Contains(err.Error(), "не найден") {

@@ -254,9 +254,10 @@ func (handler *Handler) SendMessageAfterSuccessfullyPay(w http.ResponseWriter, r
 		return
 	}
 
-	if paymentResp.Status != "ok" {
-		http.Error(w, paymentResp.Message, http.StatusBadRequest)
-	}
+	fmt.Println("Ggsdfvss1")
+	// if paymentResp.Status != "ok" {
+	// 	http.Error(w, paymentResp.Message, http.StatusBadRequest)
+	// }
 
 	booking, err := repository.GetBookingById(handler.DB, paymentResp.BookingId)
 	if err != nil {
@@ -264,12 +265,13 @@ func (handler *Handler) SendMessageAfterSuccessfullyPay(w http.ResponseWriter, r
 		return
 	}
 
+	fmt.Println("Ggsdfvss12 %v", booking.UserId)
 	user, err := getUserById(booking.UserId)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to get user: %v", err), http.StatusInternalServerError)
 		return
 	}
-
+	fmt.Println("Ggsdfvss")
 	ctx := context.Background()
 	hotel, err := handler.HotelClient.GetHotelById(ctx, &pb.GetHotelRequest{HotelId: int32(booking.HotelId)})
 	if err != nil {

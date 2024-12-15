@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
 	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/model"
 	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/parser_data"
 
@@ -56,7 +57,7 @@ func AddBooking(booking *model.Booking, room model.Room, db *sql.DB) (int, error
 
 	var bookingId int
 	err := db.QueryRow(`INSERT INTO booking (hotel_id, room_id, user_id, start_date, end_date, price, status, payment_status)
-						VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+						VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
 		booking.HotelId, booking.RoomId,
 		booking.UserId, booking.StartDate,
 		booking.EndDate, price,
@@ -177,12 +178,20 @@ func GetBookingByUser(db *sql.DB, userId int) ([]model.Booking, error) {
 
 	return bookings, nil
 }
+func GetBookingById(db *sql.DB, id int) (model.Booking, error) {
+	// SQL-запрос для получения данных о бронировании
+	query := `
+	  SELECT id, hotel_id, room_id, user_id, start_date, end_date, price, status, payment_status 
+	  FROM booking 
+	  WHERE id = $1`
 
-func GetBookingById(db *sql.DB, bookingId int) (model.Booking, error) {
-	row := db.QueryRow("SELECT id, hotel_id, room_id, user_id, start_date, end_date, price, status, payment_status FROM booking WHERE id = $1", bookingId)
+	// Выполняем запрос
+	row := db.QueryRow(query, id)
 
+	// Создаем переменную для хранения результата
 	var booking model.Booking
 
+	// Сканируем результат запроса в структуру
 	err := row.Scan(
 		&booking.ID,
 		&booking.HotelId,
@@ -195,10 +204,7 @@ func GetBookingById(db *sql.DB, bookingId int) (model.Booking, error) {
 		&booking.PaymentStatus,
 	)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return model.Booking{}, fmt.Errorf("бронирование с ID %d не найдено", bookingId)
-		}
-		return model.Booking{}, fmt.Errorf("ошибка при чтении данных из результата запроса: %w", err)
+		return booking, err
 	}
 
 	return booking, nil

@@ -28,7 +28,7 @@ func CReateTable(db *sql.DB) error {
 		surname VARCHAR(100) NOT NULL,
 		phone VARCHAR(20) NOT NULL,
 		email VARCHAR(255) UNIQUE NOT NULL,
-		balance NUMERIC(10, 2) NOT NULL DEFAULT 0
+		balance INTEGER NOT NULL DEFAULT 0
 	);
 
     `)
@@ -72,20 +72,21 @@ func SetUser(user model.User, db *sql.DB) error {
 	return nil
 }
 
-func GetUserById(id int, db *sql.DB) (*model.User, error) {
+func GetUserById(id int, db *sql.DB) (model.User, error) {
 	var user model.User
-	query := `SELECT user_id, user_name, surname, phone, email, balance FROM users WHERE user_id = $1`
+	query := `SELECT user_id, username, surname, phone, email, balance FROM users WHERE user_id = $1`
 	row := db.QueryRow(query, id)
 
 	err := row.Scan(&user.Id, &user.Name, &user.Surname, &user.Phone, &user.Email, &user.Balance)
+	fmt.Println(err)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("пользователь с таким ID не найден")
+			return user, fmt.Errorf("пользователь с таким ID не найден")
 		}
-		return nil, fmt.Errorf("ошибка при получении пользователя: %w", err)
+		return user, fmt.Errorf("ошибка при получении пользователя: %w", err)
 	}
 
-	return &user, nil
+	return user, nil
 }
 
 func GetAllUsers(db *sql.DB) ([]model.User, error) {
