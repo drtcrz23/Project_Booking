@@ -4,12 +4,16 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
 	"github.com/drtcrz23/Project_Booking/services/user-service/internal/model"
+	_ "github.com/lib/pq"
 )
 
 func CReateDBConnection(dbName string) (*sql.DB, error) {
-	connStr := dbName
-	db, err := sql.Open("sqlite3", connStr)
+	psqlInfo := fmt.Sprintf("host=localhost port=5435 user=postgres password=123 dbname=user-db sslmode=disable")
+	db, err := sql.Open("postgres", psqlInfo)
+	// connStr := dbName
+	// db, err := sql.Open("sqlite3", connStr)
 	if err != nil {
 		return nil, err
 	}
@@ -18,20 +22,21 @@ func CReateDBConnection(dbName string) (*sql.DB, error) {
 
 func CReateTable(db *sql.DB) error {
 	_, err := db.Exec(`
-        CREATE TABLE IF NOT EXISTS users (
-            user_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_name TEXT NOT NULL,
-            surname TEXT NOT NULL,
-  			phone TEXT NOT NULL,
-    		email TEXT NOT NULL,
-    		balance INTEGER NOT NULL,
-        );
+	CREATE TABLE IF NOT EXISTS users (
+		user_id SERIAL PRIMARY KEY,
+		username VARCHAR(50) NOT NULL,
+		surname VARCHAR(100) NOT NULL,
+		phone VARCHAR(20) NOT NULL,
+		email VARCHAR(255) UNIQUE NOT NULL,
+		balance INTEGER NOT NULL DEFAULT 0
+	);
+
     `)
 	return err
 }
 
 func AddUser(user model.User, db *sql.DB) (model.User, error) {
-	query := `INSERT INTO users (user_name, surname, phone, email, balance) VALUES (?, ?, ?, ?, ?)`
+	query := `INSERT INTO users (user_name, surname, phone, email, balance) VALUES ($1, $2, $3, $4, $5)`
 	result, err := db.Exec(query, user.Name, user.Surname, user.Phone, user.Email, user.Balance)
 	if err != nil {
 		return model.User{}, fmt.Errorf("ошибка при добавлении пользователя: %w", err)
@@ -48,8 +53,8 @@ func AddUser(user model.User, db *sql.DB) (model.User, error) {
 
 func SetUser(user model.User, db *sql.DB) error {
 	query := `UPDATE users
-			  SET user_name = ?, surname = ?, phone = ?, email = ?, balance = ?
-			  WHERE user_id = ?`
+			  SET user_name = $1, surname = $2, phone = $3, email = $4, balance = $5
+			  WHERE user_id = $6`
 	result, err := db.Exec(query, user.Name, user.Surname, user.Phone, user.Email, user.Balance, user.Id)
 	if err != nil {
 		return fmt.Errorf("ошибка при обновлении пользователя: %w", err)
@@ -67,20 +72,21 @@ func SetUser(user model.User, db *sql.DB) error {
 	return nil
 }
 
-func GetUserById(id int, db *sql.DB) (*model.User, error) {
+func GetUserById(id int, db *sql.DB) (model.User, error) {
 	var user model.User
-	query := `SELECT user_id, user_name, surname, phone, email, balance FROM users WHERE user_id = ?`
+	query := `SELECT user_id, username, surname, phone, email, balance FROM users WHERE user_id = $1`
 	row := db.QueryRow(query, id)
 
 	err := row.Scan(&user.Id, &user.Name, &user.Surname, &user.Phone, &user.Email, &user.Balance)
+	fmt.Println(err)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("пользователь с таким ID не найден")
+			return user, fmt.Errorf("пользователь с таким ID не найден")
 		}
-		return nil, fmt.Errorf("ошибка при получении пользователя: %w", err)
+		return user, fmt.Errorf("ошибка при получении пользователя: %w", err)
 	}
 
-	return &user, nil
+	return user, nil
 }
 
 func GetAllUsers(db *sql.DB) ([]model.User, error) {
@@ -108,7 +114,7 @@ func GetAllUsers(db *sql.DB) ([]model.User, error) {
 }
 
 func DeleteUser(id int, db *sql.DB) error {
-	query := `DELETE FROM users WHERE user_id = ?`
+	query := `DELETE FROM users WHERE user_id = $1`
 	result, err := db.Exec(query, id)
 	if err != nil {
 		return fmt.Errorf("ошибка при удалении пользователя: %w", err)

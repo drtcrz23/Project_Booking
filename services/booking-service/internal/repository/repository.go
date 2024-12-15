@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
 	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/model"
 	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/parser_data"
 
@@ -39,9 +40,9 @@ func CreateTable(db *sql.DB) error {
 	return err
 }
 
-func AddBooking(booking *model.Booking, room model.Room, db *sql.DB) error {
+func AddBooking(booking *model.Booking, room model.Room, db *sql.DB) (int, error) {
 	if room.Status != "available" {
-		return errors.New("room is not available")
+		return -1, errors.New("room is not available")
 	}
 
 	startDate := booking.StartDate
@@ -49,21 +50,23 @@ func AddBooking(booking *model.Booking, room model.Room, db *sql.DB) error {
 
 	days, err_data := parser_data.ParseAndCalculateDays(startDate, endDate)
 	if err_data != nil {
-		return err_data
+		return -1, err_data
 	}
 
 	price := room.Price * days
 
-	_, err := db.Exec(`INSERT INTO booking (hotel_id, room_id, user_id, start_date, end_date, price, status, payment_status)
-						VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+	var bookingId int
+	err := db.QueryRow(`INSERT INTO booking (hotel_id, room_id, user_id, start_date, end_date, price, status, payment_status)
+						VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
 		booking.HotelId, booking.RoomId,
 		booking.UserId, booking.StartDate,
 		booking.EndDate, price,
-		booking.Status, booking.PaymentStatus)
+		booking.Status, booking.PaymentStatus).Scan(&bookingId)
 	if err != nil {
-		return fmt.Errorf("ошибка добавления бронирования: %w", err)
+		return -1, fmt.Errorf("ошибка добавления бронирования: %w", err)
 	}
-	return err
+	booking.ID = bookingId
+	return bookingId, err
 }
 
 func DeleteBooking(booking model.DeleteBooking, db *sql.DB) error {
@@ -174,4 +177,35 @@ func GetBookingByUser(db *sql.DB, userId int) ([]model.Booking, error) {
 	}
 
 	return bookings, nil
+}
+func GetBookingById(db *sql.DB, id int) (model.Booking, error) {
+	// SQL-запрос для получения данных о бронировании
+	query := `
+	  SELECT id, hotel_id, room_id, user_id, start_date, end_date, price, status, payment_status 
+	  FROM booking 
+	  WHERE id = $1`
+
+	// Выполняем запрос
+	row := db.QueryRow(query, id)
+
+	// Создаем переменную для хранения результата
+	var booking model.Booking
+
+	// Сканируем результат запроса в структуру
+	err := row.Scan(
+		&booking.ID,
+		&booking.HotelId,
+		&booking.RoomId,
+		&booking.UserId,
+		&booking.StartDate,
+		&booking.EndDate,
+		&booking.Price,
+		&booking.Status,
+		&booking.PaymentStatus,
+	)
+	if err != nil {
+		return booking, err
+	}
+
+	return booking, nil
 }

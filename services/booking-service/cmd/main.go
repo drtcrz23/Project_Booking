@@ -4,18 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/app"
-	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/handlers"
-	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/kafka_producer"
-	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/repository"
-	pb "github.com/drtcrz23/Project_Booking/services/hotel-service/pkg/api"
-	"golang.org/x/sync/errgroup"
-	"google.golang.org/grpc"
 	"log"
 	"net/http"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/app"
+	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/handlers"
+	kafkaProduceTools "github.com/drtcrz23/Project_Booking/services/booking-service/internal/kafkaProducerTools"
+	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/repository"
+	pb "github.com/drtcrz23/Project_Booking/services/hotel-service/pkg/api"
+	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc"
 )
 
 func main() {
@@ -40,8 +41,13 @@ func main() {
 	defer grpcConn.Close()
 	hotelClient := pb.NewHotelServiceClient(grpcConn)
 	// Пока добавил так, дальше займусь соединением кафки с notifications
-	brokers := []string{"localhost:9092"}
-	producer := kafka_producer.NewKafkaProducer(brokers, "booking_event")
+	brokers := []string{"localhost:19092"}
+
+	topic := "BookingEventsQueue"
+	producer, err := kafkaProduceTools.New(brokers, topic)
+	if err != nil {
+		log.Fatalf("Failed to create producer")
+	}
 	defer producer.Close()
 
 	handler := handlers.NewHandler(db, producer, hotelClient)
@@ -55,6 +61,15 @@ func main() {
 			handler.SetBooking(w, r)
 		case "DELETE":
 			handler.DeleteBooking(w, r)
+		default:
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/booking/call", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "POST":
+			handler.SendMessageAfterSuccessfullyPay(w, r)
 		default:
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		}
@@ -100,6 +115,7 @@ func main() {
 			return err
 		}
 		fmt.Println("after server shutdown")
+		producer.Close()
 
 		return nil
 	})

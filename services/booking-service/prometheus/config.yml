@@ -1,9 +1,10 @@
 ---
+---
 global:
   scrape_interval: 30s
 
 scrape_configs:
-  - job_name: hotel_prometheus
+  - job_name: example
     static_configs:
-      - targets: ['localhost:8081']
-    metrics_path: /metrics
+      - targets:
+          - host.docker.internal:8081

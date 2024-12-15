@@ -4,25 +4,30 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+
 	"github.com/drtcrz23/Project_Booking/services/notification-service/internal/models"
+
 	"github.com/google/uuid"
 	"github.com/twmb/franz-go/pkg/kgo"
-	"os"
 )
 
 type Consumer struct {
 	client      *kgo.Client
 	topic       string
 	topicOutput *os.File
+	lastOffset  kgo.Offset
 }
 
 func NewConsumer(brokers []string, topic string) (*Consumer, error) {
 	groupID := uuid.New().String()
+	newOffset := kgo.NewOffset().AtStart()
+
 	client, err := kgo.NewClient(
 		kgo.SeedBrokers(brokers...),
 		kgo.ConsumerGroup(groupID),
 		kgo.ConsumeTopics(topic),
-		kgo.ConsumeResetOffset(kgo.NewOffset().AtStart()),
+		kgo.ConsumeResetOffset(newOffset),
 	)
 	if err != nil {
 		return nil, err
@@ -34,27 +39,35 @@ func NewConsumer(brokers []string, topic string) (*Consumer, error) {
 	}
 	defer file.Close()
 
-	return &Consumer{client: client, topic: topic, topicOutput: file}, nil
+	return &Consumer{client: client, topic: topic, topicOutput: file, lastOffset: newOffset}, nil
 }
 
 func (c *Consumer) PrintMessages() error {
 	ctx := context.Background()
-	for {
-		fetches := c.client.PollFetches(ctx)
-		if err := fetches.Errors(); err != nil {
-			return fmt.Errorf("error in fetching %v", err)
+	fetches := c.client.PollFetches(ctx)
+
+	iter := fetches.RecordIter()
+	var latestOffset kgo.Offset
+
+	for !iter.Done() {
+		record := iter.Next()
+
+		var msg models.Message
+		latestOffset = kgo.NewOffset().At(record.Offset + 1)
+		if err := json.Unmarshal(record.Value, &msg); err != nil {
+			fmt.Printf("Error decoding message: %v\n", err)
+			continue
 		}
-		iter := fetches.RecordIter()
-		for !iter.Done() {
-			record := iter.Next()
-			var msg models.Message
-			if err := json.Unmarshal(record.Value, &msg); err != nil {
-				fmt.Printf("Error decoding message: %v\n", err)
-				continue
-			}
-			c.topicOutput.WriteString("Send to " + msg.Email + "\n" + msg.Text + "\n")
-		}
+		c.topicOutput.WriteString("Send to " + msg.Email + "\n" + msg.Text + "\n")
+		fmt.Println("Send to " + msg.Email + "\n" + msg.Text + "\n")
 	}
+
+	if latestOffset != c.lastOffset {
+		c.client.CommitUncommittedOffsets(ctx)
+		c.lastOffset = latestOffset
+	}
+
+	return nil
 }
 
 func (c *Consumer) Close() {

@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/drtcrz23/Project_Booking/services/user-service/internal/repository"
 	"net/http"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/drtcrz23/Project_Booking/services/user-service/internal/repository"
 
 	"github.com/drtcrz23/Project_Booking/services/user-service/internal/app"
 	"github.com/drtcrz23/Project_Booking/services/user-service/internal/handlers"
@@ -70,7 +71,7 @@ func main() {
 	}
 
 	httpServer := http.Server{
-		Addr:    app.GetEnvVariable("HOST"),
+		Addr:    ":8082",
 		Handler: mux,
 	}
 
