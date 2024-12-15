@@ -60,6 +60,15 @@ func main() {
 		}
 	})
 
+	mux.HandleFunc("/booking/call", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "POST":
+			handler.SendMessageAfterSuccessfullyPay(w, r)
+		default:
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
 	mux.HandleFunc("/bookings", handler.GetBookings)
 	mux.HandleFunc("/bookings/user", handler.GetBookingByUser)
 

@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
@@ -10,13 +12,15 @@ import (
 )
 
 type PaymentRequest struct {
-	UserID int     `json:"user_id"`
-	Price  float64 `json:"price"`
+	BookingID int     `json:"booking_id"`
+	Price     float64 `json:"price"`
 }
 
 type PaymentResponse struct {
-	Status  string `json:"status"`
-	Message string `json:"message"`
+	BookingId int     `json:"booking_id"`
+	Price     float64 `json:"price"`
+	Status    string  `json:"status"`
+	Message   string  `json:"message"`
 }
 
 func main() {
@@ -45,8 +49,17 @@ func handlePayment(w http.ResponseWriter, r *http.Request) {
 	status, message := processPayment(paymentReq)
 
 	response := PaymentResponse{
-		Status:  status,
-		Message: message,
+		BookingId: paymentReq.BookingID,
+		Price:     paymentReq.Price,
+		Status:    status,
+		Message:   message,
+	}
+
+	err = forwardPaymentResponse(response)
+	if err != nil {
+		log.Printf("Failed to forward payment response: %v", err)
+		http.Error(w, "Failed to forward payment response", http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -54,11 +67,33 @@ func handlePayment(w http.ResponseWriter, r *http.Request) {
 }
 
 func processPayment(req PaymentRequest) (string, string) {
-	success := rand.Intn(2) == 0
+	return "ok", fmt.Sprintf("Payment of %.2f for user %d successful", req.Price, req.BookingID)
+}
 
-	if success {
-		return "ok", fmt.Sprintf("Payment of %.2f for user %d successful", req.Price, req.UserID)
+func forwardPaymentResponse(response PaymentResponse) error {
+	url := "http://localhost:8081/booking/call"
+	responseData, err := json.Marshal(response)
+	if err != nil {
+		return fmt.Errorf("failed to marshal response: %w", err)
 	}
 
-	return "failed", "Payment failed due to a random error"
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(responseData))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := ioutil.ReadAll(resp.Body)
+		return fmt.Errorf("received non-OK response: %s, body: %s", resp.Status, string(body))
+	}
+
+	return nil
 }
