@@ -16,11 +16,17 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+
+	kafkaProduceTools "github.com/drtcrz23/Project_Booking/services/booking-service/internal/kafkaProducerTools"
+	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/model"
+	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/parser_data"
+	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/repository"
+	pb "github.com/drtcrz23/Project_Booking/services/hotel-service/pkg/api"
 )
 
 type Handler struct {
 	DB          *sql.DB
-	Producer    *kafka_producer.KafkaProducer
+	Producer    *kafkaProduceTools.Producer
 	HotelClient pb.HotelServiceClient
 }
 
@@ -28,7 +34,7 @@ type QueryStatus struct {
 	Status string `json:"status"`
 }
 
-func NewHandler(db *sql.DB, producer *kafka_producer.KafkaProducer, hotelClient pb.HotelServiceClient) *Handler {
+func NewHandler(db *sql.DB, producer *kafkaProduceTools.Producer, hotelClient pb.HotelServiceClient) *Handler {
 	return &Handler{DB: db, Producer: producer, HotelClient: hotelClient}
 }
 
@@ -87,6 +93,15 @@ func (handler *Handler) AddBooking(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = handler.sendPaymentRequest(paymentRequest)
+	user := model.User{Id: 999,
+		Name:    "fakename",
+		Surname: "fakesurname",
+		Phone:   "fakenumber",
+		Email:   "fakeemail@gmail.com",
+		Balance: 999}
+
+	message_text := CreateTextMessageForBookingEvent(&booking, &room, hotel.Name, &user)
+	handler.Producer.SendMessage(user.Email, message_text)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Payment service error: %v", err), http.StatusInternalServerError)
 		return
@@ -241,7 +256,8 @@ func (handler *Handler) sendPaymentRequest(request map[string]interface{}) error
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("Non-OK response: %s", resp.Status)
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("payment service returned error: %s", string(body))
 	}
 
 	log.Println("Payment request sent successfully")
@@ -272,4 +288,10 @@ type PaymentResponse struct {
 	Price     float64 `json:"price"`
 	Status    string  `json:"status"`
 	Message   string  `json:"message"`
+}
+
+func CreateTextMessageForBookingEvent(booking *model.Booking, room *model.Room, hotel_name string, user *model.User) string {
+	return string("Dear, " + user.Name + " we notify you, that you have booked a room " + room.Type +
+		" with number " + string(room.RoomNumber) + " in hotel " + hotel_name + " for the dates from " +
+		booking.StartDate + " to " + booking.EndDate + ".\n" + "It's cost is " + string(booking.Price))
 }

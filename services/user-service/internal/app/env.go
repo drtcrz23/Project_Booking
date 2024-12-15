@@ -2,12 +2,13 @@ package app
 
 import (
 	"fmt"
-	"github.com/joho/godotenv"
 	"os"
+
+	"github.com/joho/godotenv"
 )
 
 func LoadEnv() error {
-	err := godotenv.Load("/app/.env")
+	err := godotenv.Load("../.env")
 	if err != nil {
 		return err
 	}
