@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	pb "hotelgrpc"
+	pb "github.com/drtcrz23/Project_Booking/services/grpc"
 
 	"HotelService/internal/model"
 	"HotelService/internal/repository"
@@ -241,7 +241,8 @@ func (h *Handler) AddRoom(w http.ResponseWriter, r *http.Request) {
 
 	err = repository.AddRoom(request.Room, h.DB)
 	if err != nil {
-		http.Error(w, "Ошибка при добавлении комнаты", http.StatusInternalServerError)
+		errorMessage := fmt.Sprintf("Ошибка при добавлении комнаты: %v", err)
+		http.Error(w, errorMessage, http.StatusInternalServerError)
 		return
 	}
 

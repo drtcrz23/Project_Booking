@@ -1,20 +1,17 @@
 package handlers
 
 import (
+	pb "../../../GolandProjects/Project_Booking/services/grpc"
 	"BookingService/internal/kafka_producer"
 	"BookingService/internal/model"
-	"BookingService/internal/parser_data"
 	"BookingService/internal/repository"
-	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	pb "hotelgrpc"
 	"io"
 	"net/http"
 	"strconv"
-	"time"
 )
 
 type Handler struct {
@@ -52,14 +49,9 @@ func (handler *Handler) AddBooking(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Failed to retrieve hotel: %v", err), http.StatusInternalServerError)
 		return
 	}
-	var room model.Room
-	for _, cur := range hotel.Rooms {
-		if cur.Id == int32(booking.RoomId) {
-			room = ConvertToModelRoom(cur)
-			break
-		}
-	}
+
 	fmt.Printf("Retrieved hotel: %v\n", hotel.Name)
+	var room model.Room
 	//hotel, err := handler.getHotelByGRPC(booking.HotelId)
 	//if err != nil {
 	//	http.Error(w, fmt.Sprintf("Failed to retrieve hotel: %v", err), http.StatusInternalServerError)
@@ -94,7 +86,8 @@ func (handler *Handler) AddBooking(w http.ResponseWriter, r *http.Request) {
 
 	err = repository.AddBooking(&booking, room, handler.DB)
 	if err != nil {
-		http.Error(w, "Ошибка при добавление бронирования", http.StatusBadRequest)
+		errorMessage := fmt.Sprintf("Ошибка при добавление бронирования: %v", err)
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 
@@ -116,7 +109,8 @@ func (handler *Handler) AddBooking(w http.ResponseWriter, r *http.Request) {
 
 	err = handler.Producer.Publish(r.Context(), "booking_event", message)
 	if err != nil {
-		http.Error(w, "Ошибка при отправке события в Kafka", http.StatusInternalServerError)
+		errorMessage := fmt.Sprintf("Ошибка при отправке события в Kafka: %v", err)
+		http.Error(w, errorMessage, http.StatusInternalServerError)
 		return
 	}
 

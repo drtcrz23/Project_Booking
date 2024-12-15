@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	pb "github.com/drtcrz23/Project_Booking/services/grpc"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	pb "hotelgrpc"

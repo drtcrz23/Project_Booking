@@ -2,7 +2,7 @@ go 1.23.4
 
 use (
 	./booking-service
-	./hotel-service/internal/grpc
+	./grpc
 	./hotel-service
 	./user-service
 )
