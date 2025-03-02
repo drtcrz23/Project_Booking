@@ -1,10 +1,11 @@
-module NotificationService
+module github.com/drtcrz23/Project_Booking/services/notification-service
 
 go 1.22.2
 
 require (
 	github.com/google/uuid v1.6.0
 	github.com/twmb/franz-go v1.18.0
+	golang.org/x/sync v0.9.0
 )
 
 require (

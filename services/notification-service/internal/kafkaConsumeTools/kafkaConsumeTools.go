@@ -5,14 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+
+	"github.com/drtcrz23/Project_Booking/services/notification-service/internal/models"
+
 	"github.com/google/uuid"
 	"github.com/twmb/franz-go/pkg/kgo"
-	"NotificationService/internal/models"
 )
 
 type Consumer struct {
-	client *kgo.Client
-	topic  string
+	client      *kgo.Client
+	topic       string
 	topicOutput *os.File
 	lastOffset  kgo.Offset
 }
@@ -47,6 +49,7 @@ func (c *Consumer) PrintMessages() (error) {
 		return fmt.Errorf("error in fetching %v", err)
 	}
 
+
 	iter := fetches.RecordIter()
 	var latestOffset kgo.Offset
 
@@ -60,6 +63,8 @@ func (c *Consumer) PrintMessages() (error) {
 			continue
 		}
 		c.topicOutput.WriteString("Send to " + msg.Email + "\n" + msg.Text + "\n")
+		fmt.Println("Send to " + msg.Email + "\n" + msg.Text + "\n")
+
 	}
 
 	if latestOffset != c.lastOffset {

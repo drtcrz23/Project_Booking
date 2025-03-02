@@ -8,14 +8,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	pb "github.com/drtcrz23/Project_Booking/services/grpc"
-	"golang.org/x/sync/errgroup"
-	"google.golang.org/grpc"
 	"log"
 	"net/http"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/app"
+	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/handlers"
+	kafkaProduceTools "github.com/drtcrz23/Project_Booking/services/booking-service/internal/kafkaProducerTools"
+	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/repository"
+	pb "github.com/drtcrz23/Project_Booking/services/hotel-service/pkg/api"
+	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc"
 )
 
 func main() {
@@ -39,7 +44,7 @@ func main() {
 	}
 	defer grpcConn.Close()
 	hotelClient := pb.NewHotelServiceClient(grpcConn)
-
+  
 	brokers := []string{"localhost:9092"}
 	topic := "BookingEventsQueue"
 	producer, err := kafkaProduceTools.New(brokers, topic)
@@ -59,6 +64,15 @@ func main() {
 			handler.SetBooking(w, r)
 		case "DELETE":
 			handler.DeleteBooking(w, r)
+		default:
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/booking/call", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "POST":
+			handler.SendMessageAfterSuccessfullyPay(w, r)
 		default:
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		}
@@ -104,6 +118,7 @@ func main() {
 			return err
 		}
 		fmt.Println("after server shutdown")
+		producer.Close()
 
 		producer.Close();
 

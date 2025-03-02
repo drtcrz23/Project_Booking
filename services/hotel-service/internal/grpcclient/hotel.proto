@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package hotel;
 
-option go_package = "../../../grpc";
-
 service HotelService {
   // Метод получения отеля по ID
   rpc GetHotelById (GetHotelRequest) returns (Hotel);

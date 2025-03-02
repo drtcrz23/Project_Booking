@@ -4,14 +4,22 @@ import (
 	"BookingService/internal/kafkaProduceTools"
 	"BookingService/internal/model"
 	"BookingService/internal/repository"
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	pb "github.com/drtcrz23/Project_Booking/services/grpc"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
+	"time"
+
+	kafkaProduceTools "github.com/drtcrz23/Project_Booking/services/booking-service/internal/kafkaProducerTools"
+	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/model"
+	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/parser_data"
+	"github.com/drtcrz23/Project_Booking/services/booking-service/internal/repository"
+	pb "github.com/drtcrz23/Project_Booking/services/hotel-service/pkg/api"
 )
 
 type Handler struct {
@@ -49,6 +57,8 @@ func (handler *Handler) AddBooking(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Failed to retrieve hotel: %v", err), http.StatusInternalServerError)
 		return
 	}
+
+	fmt.Printf("Retrieved hotel: %v\n", hotel.Name)
 	var room model.Room
 	for _, cur := range hotel.Rooms {
 		if cur.Id == int32(booking.RoomId) {
@@ -56,16 +66,12 @@ func (handler *Handler) AddBooking(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-	fmt.Printf("Retrieved hotel: %v\n", hotel.Name)
-	//hotel, err := handler.getHotelByGRPC(booking.HotelId)
-	//if err != nil {
-	//	http.Error(w, fmt.Sprintf("Failed to retrieve hotel: %v", err), http.StatusInternalServerError)
-	//	return
-	//}
 
-	err = repository.AddBooking(booking, room, handler.DB)
-	if err != nil {
-		http.Error(w, "Ошибка при добавление бронирования", http.StatusBadRequest)
+	startDate := booking.StartDate
+	endDate := booking.EndDate
+
+	days, err_data := parser_data.ParseAndCalculateDays(startDate, endDate)
+	if err_data != nil {
 		return
 	}
 
@@ -84,7 +90,22 @@ func (handler *Handler) AddBooking(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "Ошибка при отправке события в Kafka", http.StatusInternalServerError)
 		return
+	price := room.Price * days
+	booking.Price = int(price)
+
+	booking_id, err := repository.AddBooking(&booking, room, handler.DB)
+	if err != nil {
+		errorMessage := fmt.Sprintf("Ошибка при добавление бронирования: %v", err)
+		http.Error(w, errorMessage, http.StatusBadRequest)
+		return
 	}
+
+	paymentRequest := map[string]interface{}{
+		"booking_id": booking_id,
+		"price":      booking.Price,
+	}
+
+	err = handler.sendPaymentRequest(paymentRequest)
 
 	version := QueryStatus{
 		Status: "Done",
@@ -217,4 +238,121 @@ func (handler *Handler) GetBookingByUser(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "Ошибка при отправке данных", http.StatusInternalServerError)
 		return
 	}
+}
+
+func (handler *Handler) sendPaymentRequest(request map[string]interface{}) error {
+	url := "http://localhost:8083/pay"
+
+	requestBody, err := json.Marshal(request)
+	if err != nil {
+		return fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(requestBody))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("payment service returned error: %s", string(body))
+	}
+
+	log.Println("Payment request sent successfully")
+	return nil
+}
+
+func (handler *Handler) SendMessageAfterSuccessfullyPay(w http.ResponseWriter, r *http.Request) {
+	var paymentResp PaymentResponse
+	err := json.NewDecoder(r.Body).Decode(&paymentResp)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	fmt.Println("Ggsdfvss1")
+	// if paymentResp.Status != "ok" {
+	// 	http.Error(w, paymentResp.Message, http.StatusBadRequest)
+	// }
+
+	booking, err := repository.GetBookingById(handler.DB, paymentResp.BookingId)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to get booking: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Println("Ggsdfvss12 %v", booking.UserId)
+	user, err := getUserById(booking.UserId)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to get user: %v", err), http.StatusInternalServerError)
+		return
+	}
+	fmt.Println("Ggsdfvss")
+	ctx := context.Background()
+	hotel, err := handler.HotelClient.GetHotelById(ctx, &pb.GetHotelRequest{HotelId: int32(booking.HotelId)})
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to retrieve hotel: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	var room model.Room
+	for _, cur := range hotel.Rooms {
+		if cur.Id == int32(booking.RoomId) {
+			room = ConvertToModelRoom(cur)
+			break
+		}
+	}
+
+	message_text := CreateTextMessageForBookingEvent(&booking, &room, hotel.Name, user)
+	handler.Producer.SendMessage(user.Email, message_text)
+
+	version := QueryStatus{
+		Status: "Done",
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(version)
+}
+
+type PaymentResponse struct {
+	BookingId int     `json:"booking_id"`
+	Price     float64 `json:"price"`
+	Status    string  `json:"status"`
+	Message   string  `json:"message"`
+}
+
+func CreateTextMessageForBookingEvent(booking *model.Booking, room *model.Room, hotel_name string, user *model.User) string {
+	return string("Dear, " + user.Name + " we notify you, that you have booked a room " + room.Type +
+		" with number " + string(room.RoomNumber) + " in hotel " + hotel_name + " for the dates from " +
+		booking.StartDate + " to " + booking.EndDate + ".\n" + "It's cost is " + string(booking.Price))
+}
+
+func getUserById(userId int) (*model.User, error) {
+	url := fmt.Sprintf("http://localhost:8082/user?id=%d", userId)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to get user, status code: %d", resp.StatusCode)
+	}
+
+	var user model.User
+	err = json.NewDecoder(resp.Body).Decode(&user)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode user response: %w", err)
+	}
+
+	return &user, nil
 }

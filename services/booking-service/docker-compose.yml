@@ -1,0 +1,124 @@
+version: '3.8'
+
+services:
+  booking_databases:
+    container_name: booking_databases
+    image: postgres:latest
+    volumes:
+      - ./data/postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: 'booking-db'
+      POSTGRES_USER: 'postgres'
+      POSTGRES_PASSWORD: '123'
+    ports:
+      - "5434:5432"
+    networks:
+      example_net:
+        aliases:
+          - booking_postgres
+
+  # jaeger:
+  #   image: jaegertracing/all-in-one:1.39
+  #   container_name: example_jaeger
+  #   ports:
+  #     - "5775:5775/udp"
+  #     - "6831:6831/udp"
+  #     - "6832:6832/udp"
+  #     - "5778:5778"
+  #     - "9411:9411"
+  #     - "16686:16686"
+  #     - "14268:14268"
+  #   networks:
+  #     example_net:
+  #       aliases:
+  #         - example_jaeger
+
+  prometheus:
+    image: prom/prometheus:v2.42.0
+    container_name: booking_prometheus
+    ports:
+      - 9091:9090
+    volumes:
+      - ./prometheus/config.yml:/etc/prometheus/config.yml
+    networks:
+      example_net:
+        aliases:
+          - booking_prometheus
+
+  grafana:
+    image: grafana/grafana:9.3.6
+    container_name: booking_grafana
+    ports:
+      - 3101:3000
+    networks:
+      example_net:
+        aliases:
+          - booking_grafana
+
+
+  redpanda-0:
+    command:
+      - redpanda
+      - start
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      # Address the broker advertises to clients that connect to the Kafka API.
+      # Use the internal addresses to connect to the Redpanda brokers'
+      # from inside the same Docker network.
+      # Use the external addresses to connect to the Redpanda brokers'
+      # from outside the Docker network.docker
+      - --advertise-kafka-addr internal://redpanda-0:9092,external://localhost:19092
+      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:18082
+      # Address the broker advertises to clients that connect to the HTTP Proxy.
+      - --advertise-pandaproxy-addr internal://redpanda-0:8082,external://localhost:18082
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:18081
+      # Redpanda brokers use the RPC API to communicate with each other internally.
+      - --rpc-addr redpanda-0:33145
+      - --advertise-rpc-addr redpanda-0:33145
+      # Mode dev-container uses well-known configuration properties for development in containers.
+      - --mode dev-container
+      # Tells Seastar (the framework Redpanda uses under the hood) to use 1 core on the system.
+      - --smp 1
+      - --default-log-level=info
+    image: docker.redpanda.com/redpandadata/redpanda:v24.2.8
+    container_name: redpanda-0
+    networks:
+      example_net:
+        aliases:
+          - booking_kafka
+    ports:
+      - 18081:18081
+      - 18082:18082
+      - 19092:19092
+      - 19644:9644
+
+  redpanda-console:
+    container_name: redpanda-console
+    image: docker.redpanda.com/redpandadata/console:v2.7.2
+    networks:
+      example_net:
+        aliases:
+          - booking_redpanda_console
+    entrypoint: /bin/sh
+    command: -c 'echo "$$CONSOLE_CONFIG_FILE" > /tmp/config.yml; /app/console'
+    environment:
+      CONFIG_FILEPATH: /tmp/config.yml
+      CONSOLE_CONFIG_FILE: |
+        kafka:
+          brokers: ["redpanda-0:9092"]
+          schemaRegistry:
+            enabled: true
+            urls: ["http://redpanda-0:8081"]
+        redpanda:
+          adminApi:
+            enabled: true
+            urls: ["http://redpanda-0:9644"]
+    ports:
+      - 8090:8080
+    depends_on:
+      - redpanda-0
+
+volumes:
+  prometheus:
+
+networks:
+  example_net:

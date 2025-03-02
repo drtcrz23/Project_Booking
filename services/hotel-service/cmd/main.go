@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	pb "github.com/drtcrz23/Project_Booking/services/grpc"
-	"google.golang.org/grpc"
 	"log"
 	"net"
 	"net/http"
@@ -14,9 +12,14 @@ import (
 	"syscall"
 	"time"
 
-	"HotelService/internal/app"
-	"HotelService/internal/handlers"
-	"HotelService/internal/repository"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"google.golang.org/grpc"
+
+	"github.com/drtcrz23/Project_Booking/services/hotel-service/internal/app"
+	"github.com/drtcrz23/Project_Booking/services/hotel-service/internal/handlers"
+	"github.com/drtcrz23/Project_Booking/services/hotel-service/internal/repository"
+	pb "github.com/drtcrz23/Project_Booking/services/hotel-service/pkg/api"
 
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/sync/errgroup"
@@ -48,18 +51,20 @@ func main() {
 	// Регистрируем gRPC-сервис
 	pb.RegisterHotelServiceServer(grpcServer, handler)
 
-	// Запускаем сервер
-	lis, err := net.Listen("tcp", ":50051") // Указываем порт
-	if err != nil {
-		log.Fatalf("Ошибка при запуске gRPC сервера: %v", err)
-	}
+	metric := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "my_custom_metric",
+			Help: "An example custom metric",
+		},
+		[]string{"label_name"},
+	)
+	prometheus.MustRegister(metric)
 
-	log.Println("Hotel Service запущен на порту 50051")
-	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("Ошибка запуска gRPC-сервера: %v", err)
-	}
+	// Пример инкрементирования счетчика
+	metric.WithLabelValues("example_label").Inc()
 
 	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.Handler())
 	mux.HandleFunc("/hotels", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
@@ -122,6 +127,19 @@ func main() {
 		}
 		fmt.Println("after listener")
 
+		return nil
+	})
+	group.Go(func() error {
+		// Запускаем сервер
+		lis, err := net.Listen("tcp", ":50051") // Указываем порт
+		if err != nil {
+			log.Fatalf("Ошибка при запуске gRPC сервера: %v", err)
+		}
+
+		log.Println("Hotel Service запущен на порту 50051")
+		if err := grpcServer.Serve(lis); err != nil {
+			log.Fatalf("Ошибка запуска gRPC-сервера: %v", err)
+		}
 		return nil
 	})
 	group.Go(func() error {

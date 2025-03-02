@@ -4,15 +4,17 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"time"
 	"os/signal"
 	"syscall"
+	"time"
+
+	"github.com/drtcrz23/Project_Booking/services/notification-service/internal/kafkaConsumeTools"
+
 	"golang.org/x/sync/errgroup"
-	"NotificationService/internal/kafkaConsumeTools"
 )
 
 func main() {
-	brokers := []string{"localhost:9092"}
+	brokers := []string{"localhost:19092"}
 	topic := "BookingEventsQueue"
 
 	c, err := kafkaConsumeTools.NewConsumer(brokers, topic)
