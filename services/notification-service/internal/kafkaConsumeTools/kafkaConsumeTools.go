@@ -34,17 +34,21 @@ func NewConsumer(brokers []string, topic string) (*Consumer, error) {
 	}
 
 	file, err := os.Create(topic + ".txt")
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
+	if err != nil{
+        return nil, err
+    }
+    defer file.Close()
 
 	return &Consumer{client: client, topic: topic, topicOutput: file, lastOffset: newOffset}, nil
 }
 
-func (c *Consumer) PrintMessages() error {
+func (c *Consumer) PrintMessages() (error) {
 	ctx := context.Background()
 	fetches := c.client.PollFetches(ctx)
+	if err := fetches.Errors();  err != nil {
+		return fmt.Errorf("error in fetching %v", err)
+	}
+
 
 	iter := fetches.RecordIter()
 	var latestOffset kgo.Offset
@@ -60,6 +64,7 @@ func (c *Consumer) PrintMessages() error {
 		}
 		c.topicOutput.WriteString("Send to " + msg.Email + "\n" + msg.Text + "\n")
 		fmt.Println("Send to " + msg.Email + "\n" + msg.Text + "\n")
+
 	}
 
 	if latestOffset != c.lastOffset {

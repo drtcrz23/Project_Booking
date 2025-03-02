@@ -30,31 +30,33 @@ func main() {
 
 	group, ctx := errgroup.WithContext(cancelCtx)
 	group.Go(func() error {
-		for {
+        for {
 			err := c.PrintMessages()
-			if err != nil {
-				fmt.Printf("error in handling messages: %s\n", err)
-			}
-			time.Sleep(5 * time.Second)
-		}
-	})
+            if err != nil {
+                fmt.Printf("error in handling messages: %s\n", err)
+				cancel()
+                return fmt.Errorf("failed to print messages: %w", err)
+            }
+            time.Sleep(5 * time.Second)
+        }
+    })
 
 	group.Go(func() error {
-		<-ctx.Done()
-		fmt.Println("Shutting down...")
+        <-ctx.Done()
+        fmt.Println("Shutting down...")
 
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
+        shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+        defer cancel()
 
-		c.Close()
+        c.Close()
 
-		<-shutdownCtx.Done()
-		return nil
-	})
+        <-shutdownCtx.Done()
+        return nil
+    })
 
-	if err := group.Wait(); err != nil {
-		log.Fatalf("Program terminated with error: %v", err)
-	}
+    if err := group.Wait(); err != nil {
+        log.Fatalf("Program terminated with error: %v", err)
+    }
 
-	fmt.Println("Program gracefully terminated.")
+    fmt.Println("Program gracefully terminated.")
 }
